@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X-AutoPost</title>
+    <style>
+        /* Style général */
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        /* Style du conteneur principal */
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Style des groupes d'inputs */
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        /* Style des inputs et boutons */
+
+        .tweet-actions {
+            margin-top: 10px;
+        }
+
+        .action-btn {
+            background-color: #e7f5fe;
+            border: 1px solid #1da1f2;
+            color: #1da1f2;
+            padding: 5px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 12px;
+        }
+
+        .action-btn:hover {
+            background-color: #d0ebfa;
+        }
+        input, button {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+
+        /* Style du bouton principal */
+        button {
+            background-color: #1da1f2;
+            color: white;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        /* Effet hover sur le bouton */
+        button:hover {
+            background-color: #0d95e8;
+        }
+
+        /* Style des messages d'état */
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        /* Style des messages de succès */
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        /* Style des messages d'erreur */
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Style du textarea */
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Style des informations du compte */
+        .account-info {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8fafc;
+            border-radius: 4px;
+        }
+
+        /* Style du footer */
+        footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 12px;
+        }
+
+        /* Style des logs */
+        .logs-container pre {
+            background-color: #222;
+            color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: scroll;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Style des tweets détectés */
+        .tweets-container {
+            margin-top: 20px;
+        }
+
+        .tweet-author-group {
+            margin-bottom: 20px;
+        }
+
+        .tweet-author-group h3 {
+            margin-bottom: 10px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        .tweet {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+        }
+
+        .tweet p {
+            margin: 0 0 10px 0;
+        }
+
+        .tweet a {
+            font-size: 0.9em;
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .tweet a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>X-AutoPost</h1>
+        
+        <div class="account-info">
+            <h3>Gestion des comptes X</h3>
+            <div class="input-group">
+                <button onclick="connectXAccount()">Connecter un compte X (recommandé)</button>
+                <button onclick="addAccountManually()" style="margin-top: 5px; background-color: #6c757d;">Ajouter un compte manuellement (clés API)</button>
+            </div>
+            <div class="input-group">
+                <label for="accountSelect">Compte X utilisé pour les actions :</label>
+                <select id="accountSelect" onchange="updateSelectedAccount()"></select>
+                <button id="logoutBtn" onclick="logoutAccount()" style="margin-left:8px;">Déconnecter ce compte</button>
+            </div>
+            <div id="accountsList"></div>
+            <div id="accountInfo"></div>
+        </div>
+
+        <div class="input-group">
+            <label for="tweetText">Votre tweet :</label>
+            <textarea id="tweetText" placeholder="Entrez votre tweet ici..." rows="4"></textarea>
+        </div>
+
+        <!-- Panneau Logs -->
+
+        </div>
+
+        <div class="input-group">
+            <label for="replyTweetId">ID du tweet à répondre (optionnel) :</label>
+            <input type="text" id="replyTweetId" placeholder="Ex: 1234567890123456789" />
+        </div>
+
+        <div class="input-group">
+            <button onclick="postTweet()">Publier le tweet</button>
+        </div>
+        <div class="input-group">
+            <button onclick="replyToTweet()">Répondre à ce tweet</button>
+        </div>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <div class="container">
+        <h2>Comptes à surveiller (automation)</h2>
+        <form id="watchAccountsForm" onsubmit="event.preventDefault(); saveWatchAccounts();">
+            <label for="watchAccountsInput">Liste des pseudos à suivre (un par ligne) :</label><br>
+            <textarea id="watchAccountsInput" rows="4" style="width: 100%;"></textarea><br>
+            <button type="submit">Enregistrer la liste</button>
+            <button type="button" id="toggleAutomationBtn" style="margin-left: 10px;">Passer en mode Manuel</button>
+        </form>
+        <div class="input-group">
+    <label>Quotas d'actions automatiques :</label>
+<label for="likeLimitInput" style="margin-left:8px;">Like</label>
+<input type="number" id="likeLimitInput" min="1" value="100" style="width:60px;">
+<label for="retweetLimitInput" style="margin-left:8px;">RT</label>
+<input type="number" id="retweetLimitInput" min="1" value="100" style="width:60px;">
+<label for="commentLimitInput" style="margin-left:8px;">Commentaire</label>
+<input type="number" id="commentLimitInput" min="1" value="100" style="width:60px;">
+<button type="button" onclick="applyActionLimit()" style="margin-left:8px;">Définir les quotas</button>
+<span id="actionLimitStatus" style="margin-left:16px;color:#1da1f2;"></span>
+</div>
+<div style="margin-top: 8px;"><b>Mode actuel :</b> <span id="automationStatus">Automatique</span></div>
+        <div id="watchAccountsList"></div>
+        <div id="watchAccountsStatus" style="margin-top:8px;color:#555"></div>
+    </div>
+
+
+
+    <div class="container">
+        <h2>Tableau de bord de l'automatisation</h2>
+        <div id="dashboardStats">
+    <p><strong>Actions totales :</strong> <span id="totalLikes">0</span> Likes | <span id="totalRetweets">0</span> Retweets | <span id="total-comments">0</span> Commentaires</p>
+    <div id="quotasDashboard" style="margin-top:6px;font-size:1.1em;"></div>
+</div>
+        <h3>Journal des actions récentes</h3>
+        <table id="actionLogTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Action</th>
+                    <th>Tweet</th>
+                    <th>Détail</th>
+                    <th>Auteur Original</th>
+                    <th>Compte utilisé</th>
+                </tr>
+            </thead>
+            <tbody id="actionLogBody">
+                <!-- Les logs seront insérés ici par JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="container">
+        <h2>Voir les derniers tweets d'un utilisateur</h2>
+        <div class="input-group">
+            <label for="searchUsername">Pseudo de l'utilisateur (ex: @PrinceNganooSOL):</label>
+            <input type="text" id="searchUsername" placeholder="@utilisateur" />
+        </div>
+        <div class="input-group">
+            <button onclick="loadUserTweets()">Afficher les 5 derniers tweets</button>
+        </div>
+        <div id="userTweets"></div>
+    </div>
+
+    <div class="container">
+        <h2>Recherche générale de tweets par mots-clés</h2>
+        <div class="input-group">
+            <label for="searchKeywords">Mots-clés à rechercher (séparés par des virgules, ex: sol,moon):</label>
+            <input type="text" id="searchKeywords" placeholder="sol,moon" />
+        </div>
+        <div class="input-group">
+            <label for="searchCount">Nombre de tweets à explorer (max 100):</label>
+            <input type="number" id="searchCount" value="20" min="1" max="100" />
+        </div>
+        <div class="input-group">
+            <button onclick="loadTweetsByKeywords()">Rechercher par mots-clés</button>
+        </div>
+        <div id="searchTweets"></div>
+    </div>
+
+    <div class="container">
+        <h2>Derniers Tweets Détectés</h2>
+        <div id="found-tweets-list"><p>Chargement...</p></div>
+    </div>
+
+    <footer>
+        <p>X-AutoPost 2025 - Une application pour automatiser les actions sur X</p>
+    </footer>
+
+    <script>
+        // --- Fonctions de l'interface utilisateur ---
+        let defaultAccountId = null;
+
+        // --- Fonctions de gestion des comptes ---
+        async function loadAccounts() {
+            try {
+                const res = await fetch('http://localhost:3005/api/accounts');
+                const accounts = await res.json();
+                const select = document.getElementById('accountSelect');
+                select.innerHTML = '';
+                accounts.forEach(acc => {
+                    const opt = document.createElement('option');
+                    opt.value = acc.id;
+                    opt.textContent = `@${acc.username} (${acc.id})`;
+                    select.appendChild(opt);
+                });
+                if (accounts.length) {
+                    if (!defaultAccountId || !accounts.find(a => a.id === defaultAccountId)) {
+                        defaultAccountId = accounts[0].id;
+                    }
+                    select.value = defaultAccountId;
+                } else {
+                    defaultAccountId = null;
+                }
+                document.getElementById('accountsList').innerHTML = accounts.length ?
+                    `<b>Comptes connectés :</b> ` + accounts.map(a => `@${a.username} (${a.id})`).join(', ') :
+                    '<i>Aucun compte connecté</i>';
+            } catch (error) {
+                console.error('Erreur lors du chargement des comptes:', error);
+                document.getElementById('accountsList').innerHTML = '<i>Erreur de chargement des comptes.</i>';
+            }
+        }
+
+        function updateSelectedAccount() {
+            const select = document.getElementById('accountSelect');
+            defaultAccountId = select.value;
+        }
+
+        async function addAccountManually() {
+            const apiKey = prompt("Entrez votre clé d'API (API Key):");
+            if (!apiKey) return;
+            const apiSecret = prompt("Entrez votre secret de clé d'API (API Key Secret):");
+            if (!apiSecret) return;
+            const accessToken = prompt("Entrez votre jeton d'accès (Access Token):");
+            if (!accessToken) return;
+            const accessSecret = prompt("Entrez votre secret de jeton d'accès (Access Token Secret):");
+            if (!accessSecret) return;
+
+            try {
+                const response = await fetch('http://localhost:3005/api/add-account', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ apiKey, apiSecret, accessToken, accessSecret }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(`Compte @${result.account.username} ajouté avec succès !`);
+                    loadAccounts(); // Recharger la liste des comptes
+                } else {
+                    throw new Error(result.error || 'Une erreur inconnue est survenue.');
+                }
+            } catch (error) {
+                console.error("Erreur lors de l'ajout du compte manuel:", error);
+                alert(`Erreur : ${error.message}`);
+            }
+        }
+
+        async function connectXAccount() {
+            try {
+                const res = await fetch('http://localhost:3005/api/oauth/init');
+                const data = await res.json();
+                if (!data.url) throw new Error('Impossible d’obtenir le lien d’authentification X');
+                const popup = window.open(data.url, 'oauthX', 'width=600,height=700');
+                if (!popup) {
+                    alert('Impossible d’ouvrir la fenêtre d’authentification. Veuillez autoriser les popups.');
+                    return;
+                }
+                const timer = setInterval(() => {
+                    if (popup.closed) {
+                        clearInterval(timer);
+                        loadAccounts();
+                    }
+                }, 1000);
+            } catch (err) {
+                alert('Erreur OAuth : ' + err.message);
+            }
+        }
+
+        async function logoutAccount() {
+            const select = document.getElementById('accountSelect');
+            const accountId = select.value;
+            if (!accountId) return;
+            if (!confirm('Voulez-vous vraiment déconnecter ce compte X ?')) return;
+            try {
+                const res = await fetch(`http://localhost:3005/api/account?accountId=${encodeURIComponent(accountId)}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (res.ok) {
+                    alert('Compte X déconnecté.');
+                    loadAccounts();
+                } else {
+                    alert('Erreur : ' + (data.error || 'inconnue'));
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+            }
+        }
+
+        // --- Fonctions d'actions sur les tweets ---
+        async function loadUserTweets() {
+            const username = document.getElementById('searchUsername').value.trim().replace(/^@/, '');
+            const container = document.getElementById('userTweets');
+            if (!username) {
+                container.innerHTML = '<span style="color:#e74c3c">Veuillez entrer un pseudo.</span>';
+                return;
+            }
+            container.innerHTML = 'Chargement...';
+            try {
+                const res = await fetch(`http://localhost:3005/api/user-tweets?username=${encodeURIComponent(username)}`);
+                if (!res.ok) throw new Error('Erreur serveur');
+                const data = await res.json();
+                if (!data.tweets || !Array.isArray(data.tweets) || data.tweets.length === 0) {
+                    container.innerHTML = '<i>Aucun tweet trouvé pour cet utilisateur.</i>';
+                    return;
+                }
+                container.innerHTML = '<ul>' + data.tweets.slice(0, 5).map(t => {
+    return `<li><b>${t.created_at || ''}</b> : ${t.text}<br>` +
+        `<button class="action-btn" onclick="performTweetAction('like','${t.id}')">Like</button> ` +
+        `<button class="action-btn" onclick="performTweetAction('retweet','${t.id}')">RT</button> ` +
+        `<button class="action-btn" onclick="performTweetAction('comment','${t.id}')">Commenter</button>` +
+        '</li>';
+}).join('') + '</ul>';
+
+            } catch (e) {
+                container.innerHTML = `<span style="color:#e74c3c">Erreur : ${e.message}</span>`;
+            }
+        }
+        window.loadUserTweets = loadUserTweets;
+                async function postTweet() {
+            const tweetText = document.getElementById('tweetText').value.trim();
+            const statusDiv = document.getElementById('status');
+            if (!tweetText) {
+                statusDiv.textContent = 'Veuillez entrer du texte pour votre tweet.';
+                statusDiv.className = 'status error';
+                return;
+            }
+            // ... (le reste de la fonction postTweet, si nécessaire)
+        }
+
+        async function replyToTweet() {
+            // ... (logique pour répondre à un tweet)
+        }
+
+        // --- Fonctions pour le tableau de bord et l'automatisation ---
+
+        async function saveWatchAccounts() {
+            const pseudos = document.getElementById('watchAccountsInput').value.split('\n').map(p => p.trim()).filter(Boolean);
+            try {
+                await fetch('http://localhost:3005/api/watch-accounts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pseudos })
+                });
+                alert('Liste des comptes à surveiller enregistrée.');
+            } catch (error) {
+                alert('Erreur lors de l\`enregistrement de la liste.');
+            }
+        }
+
+        async function loadWatchAccounts() {
+            try {
+                const res = await fetch('http://localhost:3005/api/watch-accounts');
+                const data = await res.json();
+                document.getElementById('watchAccountsInput').value = data.watchAccounts.join('\n');
+            } catch (error) {
+                console.error('Erreur chargement comptes à surveiller:', error);
+            }
+        }
+
+        async function toggleAutomation() {
+            try {
+                const res = await fetch('http://localhost:3005/api/automation-status', { method: 'POST' });
+                const data = await res.json();
+                updateAutomationStatus(data.isEnabled);
+            } catch (error) {
+                console.error('Erreur changement statut automation:', error);
+            }
+        }
+
+        function updateAutomationStatus(isEnabled) {
+            document.getElementById('automationStatus').textContent = isEnabled ? 'Automatique' : 'Manuel';
+            document.getElementById('toggleAutomationBtn').textContent = isEnabled ? 'Passer en mode Manuel' : 'Passer en mode Automatique';
+        }
+
+        async function loadAutomationStatus() {
+            try {
+                const res = await fetch('http://localhost:3005/api/automation-status');
+                const data = await res.json();
+                updateAutomationStatus(data.isEnabled);
+            } catch (error) {
+                console.error('Erreur chargement statut automation:', error);
+            }
+        }
+
+        async function updateDashboard() {
+            try {
+                const res = await fetch('http://localhost:3005/api/dashboard-stats');
+                const data = await res.json();
+                document.getElementById('totalLikes').textContent = data.totalLikes;
+                document.getElementById('totalRetweets').textContent = data.totalRetweets;
+                document.getElementById('total-comments').textContent = data.totalComments;
+
+                const logsBody = document.getElementById('actionLogBody');
+                let newLogsHtml = '';
+                if (data.recentActions && data.recentActions.length > 0) {
+                    data.recentActions.forEach(log => {
+                        let detailCell = '<td>-</td>';
+                        if (log.type === 'comment' && log.text) {
+                            detailCell = `<td>${log.text}</td>`;
+                        }
+                        newLogsHtml += `
+                        <tr>
+                            <td>${new Date(log.timestamp).toLocaleString()}</td>
+                            <td>${log.type}</td>
+                            <td><a href="${log.tweetUrl}" target="_blank">${log.tweetId}</a></td>
+                            ${detailCell}
+                            <td>@${log.originalAuthor}</td>
+                            <td>${log.actingAccount}</td>
+                        </tr>`;
+                    });
+                }
+                logsBody.innerHTML = newLogsHtml;
+            } catch (error) {
+                console.error('Erreur mise à jour dashboard:', error);
+            }
+        }
+
+        async function updateFoundTweets() {
+            try {
+                const res = await fetch('http://localhost:3005/api/found-tweets');
+                const data = await res.json();
+                const listDiv = document.getElementById('found-tweets-list');
+                if (!data.tweets || data.tweets.length === 0) {
+                    listDiv.innerHTML = '<p>Aucun nouveau tweet détecté pour le moment.</p>';
+                    return;
+                }
+                let html = '';
+                data.tweets.forEach(tweet => {
+                    html += `
+                        <div class="tweet">
+                            <p><strong>@${tweet.author}:</strong> ${tweet.text}</p>
+                            <a href="${tweet.url}" target="_blank">Voir sur X</a> - <span>${new Date(tweet.timestamp).toLocaleString()}</span>
+                        </div>
+                    `;
+                });
+                listDiv.innerHTML = html;
+            } catch (error) {
+                console.error('Erreur mise à jour tweets trouvés:', error);
+                document.getElementById('found-tweets-list').innerHTML = '<p>Erreur lors du chargement des tweets.</p>';
+            }
+        }
+
+        // --- Initialisation ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAccounts();
+            loadWatchAccounts();
+            loadAutomationStatus();
+            updateDashboard();
+            updateFoundTweets();
+            setInterval(updateDashboard, 5000); // Rafraîchit toutes les 5s
+            setInterval(updateFoundTweets, 10000); // Rafraîchit toutes les 10s
+        });
+
+    </script>
+    <script src="ui.js"></script>
+</body>
+</html>
+                statusDiv.textContent = 'Le texte du tweet et l\'ID du tweet à répondre sont requis';
+                return;
+            }
+            if (!defaultAccountId) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = 'Aucun compte X sélectionné';
+                return;
+            }
+            try {
+                statusDiv.className = 'status';
+                statusDiv.textContent = 'Réponse en cours...';
+                const response = await fetch('http://localhost:3005/api/reply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: tweetText, replyTo: replyTweetId, accountId: defaultAccountId })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    statusDiv.className = 'status success';
+                    statusDiv.textContent = 'Réponse publiée avec succès !';
+                    document.getElementById('tweetText').value = '';
+                    document.getElementById('replyTweetId').value = '';
+                } else {
+                    throw new Error(data.error || 'Erreur lors de la publication de la réponse');
+                }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = error.message;
+            }
+        }
+
+        function prefillReply(tweetId) {
+            document.getElementById('replyTweetId').value = tweetId;
+            document.getElementById('tweetText').focus();
+        }
+
+        // --- Fonctions de recherche et d'affichage de tweets ---
+        async function loadUserTweets() {
+            const usernameInput = document.getElementById('searchUsername');
+            const tweetsDiv = document.getElementById('userTweets');
+            if (!usernameInput || !tweetsDiv) return;
+            const username = usernameInput.value.trim().replace(/^@/, '');
+            tweetsDiv.innerHTML = '';
+            if (!username) {
+                tweetsDiv.innerHTML = '<div class="status error">Veuillez entrer un pseudo utilisateur.</div>';
+                return;
+            }
+            if (!defaultAccountId) {
+                tweetsDiv.innerHTML = '<div class="status error">Aucun compte X sélectionné.</div>';
+                return;
+            }
+            tweetsDiv.innerHTML = '<div class="status">Chargement...</div>';
+            try {
+                const response = await fetch(`http://localhost:3005/api/user-tweets/${encodeURIComponent(username)}?accountId=${defaultAccountId}`);
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Erreur lors de la récupération des tweets');
+                if (!data.tweets.length) {
+                    tweetsDiv.innerHTML = '<div class="status">Aucun tweet trouvé.</div>';
+                    return;
+                }
+                let html = `<h3>Derniers tweets de @${data.user.username || data.user.screen_name}</h3>`;
+                html += `<ul style='list-style: none; padding: 0;'>`;
+                for (const tweet of data.tweets) {
+                    html += `<li style='margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;'>`;
+                    html += `<p>${tweet.text}</p>`;
+                    html += `<small>ID: ${tweet.id} | ${new Date(tweet.created_at).toLocaleString()}</small>`;
+                    html += `<div style='margin-top: 5px;'>
+                        <button class="action-btn" onclick="performAction('like', '${tweet.id}')">❤️ Like</button>
+                        <button class="action-btn" onclick="performAction('retweet', '${tweet.id}')">🔄 Retweet</button>
+                        <button class="action-btn" onclick="prefillReply('${tweet.id}')">💬 Répondre</button>
+                    </div>`;
+                    html += `</li>`;
+                }
+                html += '</ul>';
+                tweetsDiv.innerHTML = html;
+            } catch (error) {
+                tweetsDiv.innerHTML = `<div class="status error">${error.message}</div>`;
+            }
+        }
+
+        async function loadTweetsByKeywords() {
+            const keywords = document.getElementById('searchKeywords').value.trim();
+            const count = document.getElementById('searchCount').value.trim() || '20';
+            const tweetsDiv = document.getElementById('searchTweets');
+            tweetsDiv.innerHTML = '';
+            if (!keywords) {
+                tweetsDiv.innerHTML = '<div class="status error">Veuillez entrer au moins un mot-clé.</div>';
+                return;
+            }
+            if (!defaultAccountId) {
+                tweetsDiv.innerHTML = '<div class="status error">Aucun compte X sélectionné.</div>';
+                return;
+            }
+            tweetsDiv.innerHTML = '<div class="status">Chargement...</div>';
+            try {
+                const response = await fetch(`http://localhost:3005/api/search?q=${encodeURIComponent(keywords)}&count=${count}&accountId=${defaultAccountId}`);
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Erreur lors de la recherche');
+                if (!data.tweets.length) {
+                    tweetsDiv.innerHTML = '<div class="status">Aucun tweet trouvé.</div>';
+                    return;
+                }
+                let html = `<h3>Résultats pour "${keywords}"</h3>`;
+                html += `<ul style='list-style: none; padding: 0;'>`;
+                for (const tweet of data.tweets) {
+                    html += `<li style='margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;'>`;
+                    html += `<p><strong>@${tweet.user.screen_name}</strong>: ${tweet.text}</p>`;
+                    html += `<small>ID: ${tweet.id} | ${new Date(tweet.created_at).toLocaleString()}</small>`;
+                    html += `<div style='margin-top: 5px;'>
+                        <button class="action-btn" onclick="performAction('like', '${tweet.id}')">❤️ Like</button>
+                        <button class="action-btn" onclick="performAction('retweet', '${tweet.id}')">🔄 Retweet</button>
+                        <button class="action-btn" onclick="prefillReply('${tweet.id}')">💬 Répondre</button>
+                    </div>`;
+                    html += `</li>`;
+                }
+                html += '</ul>';
+                tweetsDiv.innerHTML = html;
+            } catch (error) {
+                tweetsDiv.innerHTML = `<div class="status error">${error.message}</div>`;
+            }
+        }
+
+        // --- AUTOMATION & DASHBOARD --- //
+        async function saveWatchAccounts() {
+            const pseudos = document.getElementById('watchAccountsInput').value.split('\n').map(p => p.trim()).filter(Boolean);
+            const statusDiv = document.getElementById('watchAccountsStatus');
+            try {
+                const response = await fetch('http://localhost:3005/api/watch-accounts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pseudos })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Erreur inconnue');
+                statusDiv.textContent = 'Liste enregistrée ! Le mode automatique est maintenant ACTIF.';
+
+                // Activer l'automatisation
+                await fetch('http://localhost:3005/api/automation-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enable: true })
+                });
+                updateAutomationStatus(true);
+            } catch (error) {
+                statusDiv.textContent = `Erreur : ${error.message}`;
+            }
+        }
+
+        async function loadWatchAccounts() {
+            try {
+                const response = await fetch('http://localhost:3005/api/watch-accounts');
+                const data = await response.json();
+                if (data.watchAccounts) {
+                    document.getElementById('watchAccountsInput').value = data.watchAccounts.join('\n');
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement des comptes à surveiller:', error);
+            }
+        }
+
+        async function toggleAutomation() {
+            try {
+                const response = await fetch('http://localhost:3005/api/automation-status', { method: 'POST' });
+                const data = await response.json();
+                updateAutomationStatus(data.isEnabled);
+            } catch (error) {
+                console.error('Erreur lors du changement de statut de l\'automatisation:', error);
+            }
+        }
+
+        function updateAutomationStatus(isEnabled) {
+            const statusEl = document.getElementById('automationStatus');
+            const btnEl = document.getElementById('toggleAutomationBtn');
+            const watchStatusDiv = document.getElementById('watchAccountsStatus');
+
+            if (isEnabled) {
+                statusEl.textContent = 'Automatique';
+                btnEl.textContent = 'Passer en mode Manuel';
+            } else {
+                statusEl.textContent = 'Manuel';
+                btnEl.textContent = 'Passer en mode Automatique';
+                if (watchStatusDiv) {
+                    watchStatusDiv.textContent = ''; // Effacer le message lors du passage en manuel
+                }
+            }
+        }
+
+        async function loadAutomationStatus() {
+            try {
+                const response = await fetch('http://localhost:3005/api/automation-status');
+                const data = await response.json();
+                updateAutomationStatus(data.isEnabled);
+            } catch (error) {
+                console.error('Erreur lors du chargement du statut de l\'automatisation:', error);
+            }
+        }
+        async function updateDashboard() {
+            try {
+                const response = await fetch('http://localhost:3005/api/dashboard-stats');
+                const data = await response.json();
+
+                document.getElementById('totalLikes').textContent = data.totalLikes;
+                document.getElementById('totalRetweets').textContent = data.totalRetweets;
+                document.getElementById('total-comments').textContent = data.totalComments;
+
+                const logsBody = document.getElementById('actionLogBody');
+                let newLogsHtml = '';
+                if (data.recentActions && data.recentActions.length > 0) {
+                    data.recentActions.forEach(log => {
+                        let detailCell = '<td>-</td>';
+                        if (log.type === 'comment' && log.text) {
+                            detailCell = `<td>${log.text}</td>`;
+                        }
+
+                        newLogsHtml += `
+                        <tr>
+                            <td>${new Date(log.timestamp).toLocaleString()}</td>
+                            <td>${log.type}</td>
+                            <td><a href="${log.tweetUrl}" target="_blank">${log.tweetId}</a></td>
+                            ${detailCell}
+                            <td>@${log.originalAuthor}</td>
+                            <td>${log.actingAccount}</td>
+                        </tr>`;
+                    });
+                }
+
+                if (logsBody.innerHTML.trim() !== newLogsHtml.trim()) {
+                    logsBody.innerHTML = newLogsHtml;
+                }
+
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Erreur inconnue');
+        statusDiv.textContent = 'Liste enregistrée ! Le mode automatique est maintenant ACTIF.';
+
+        // Activer l'automatisation
+        await fetch('http://localhost:3005/api/automation-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enable: true })
+        });
+        updateAutomationStatus(true);
+    } catch (error) {
+        statusDiv.textContent = `Erreur : ${error.message}`;
+    }
+}
+
+async function loadWatchAccounts() {
+    try {
+        const response = await fetch('http://localhost:3005/api/watch-accounts');
+        const data = await response.json();
+        if (data.watchAccounts) {
+            document.getElementById('watchAccountsInput').value = data.watchAccounts.join('\n');
+        }
+    } catch (error) {
+        console.error('Erreur lors du chargement des comptes à surveiller:', error);
+    }
+}
+
+async function toggleAutomation() {
+    try {
+        const response = await fetch('http://localhost:3005/api/automation-status', { method: 'POST' });
+        const data = await response.json();
+        updateAutomationStatus(data.isEnabled);
+    } catch (error) {
+        console.error('Erreur lors du changement de statut de l\'automatisation:', error);
+    }
+}
+
+function updateAutomationStatus(isEnabled) {
+    const statusEl = document.getElementById('automationStatus');
+    const btnEl = document.getElementById('toggleAutomationBtn');
+    const watchStatusDiv = document.getElementById('watchAccountsStatus');
+
+    if (isEnabled) {
+        statusEl.textContent = 'Automatique';
+        btnEl.textContent = 'Passer en mode Manuel';
+    } else {
+        statusEl.textContent = 'Manuel';
+        btnEl.textContent = 'Passer en mode Automatique';
+        if (watchStatusDiv) {
+            watchStatusDiv.textContent = ''; // Effacer le message lors du passage en manuel
+        }
+    }
+}
+
+async function loadAutomationStatus() {
+    try {
+        const response = await fetch('http://localhost:3005/api/automation-status');
+        const data = await response.json();
+        updateAutomationStatus(data.isEnabled);
+    } catch (error) {
+        console.error('Erreur lors du chargement du statut de l\'automatisation:', error);
+    }
+}
+
+async function updateDashboard() {
+    try {
+        const response = await fetch('http://localhost:3005/api/dashboard-stats');
+        const data = await response.json();
+
+        document.getElementById('totalLikes').textContent = data.totalLikes;
+        document.getElementById('totalRetweets').textContent = data.totalRetweets;
+        document.getElementById('total-comments').textContent = data.totalComments;
+
+        const logsBody = document.getElementById('actionLogBody');
+        let newLogsHtml = '';
+        if (data.recentActions && data.recentActions.length > 0) {
+            data.recentActions.forEach(log => {
+                let detailCell = '<td>-</td>';
+                if (log.type === 'comment' && log.text) {
+                    detailCell = `<td>${log.text}</td>`;
+                }
+
+                newLogsHtml += `
+                <tr>
+                    <td>${new Date(log.timestamp).toLocaleString()}</td>
+                    <td>${log.type}</td>
+                    <td><a href="${log.tweetUrl}" target="_blank">${log.tweetId}</a></td>
+                    ${detailCell}
+                    <td>@${log.originalAuthor}</td>
+                    <td>${log.actingAccount}</td>
+                </tr>`;
+            });
+        }
+
+        if (logsBody.innerHTML.trim() !== newLogsHtml.trim()) {
+            logsBody.innerHTML = newLogsHtml;
+        }
+
+    } catch (error) {
+        console.error('Erreur lors de la mise à jour du dashboard:', error);
+    }
+}
+
+document.getElementById('toggleAutomationBtn').addEventListener('click', toggleAutomation);
+
+// --- Fonction pour afficher les tweets détectés ---
+async function updateFoundTweets() {
+    try {
+        const res = await fetch('http://localhost:3005/api/found-tweets');
+        const data = await res.json();
+        const listDiv = document.getElementById('found-tweets-list');
+
+        if (!data.tweets || data.tweets.length === 0) {
+            listDiv.innerHTML = '<p>Aucun nouveau tweet détecté pour le moment.</p>';
+            return;
+        }
+
+        let html = '';
+        data.tweets.forEach(tweet => {
+            html += `
+                <div class="tweet">
+                    <p><strong>@${tweet.author}:</strong> ${tweet.text}</p>
+                    <a href="${tweet.url}" target="_blank">Voir sur X</a> - <span>${new Date(tweet.timestamp).toLocaleString()}</span>
+                </div>
+            `;
+        });
+        listDiv.innerHTML = html;
+
+    } catch (error) {
+        console.error('Erreur lors de la mise à jour des tweets trouvés:', error);
+        document.getElementById('found-tweets-list').innerHTML = '<p>Erreur lors du chargement des tweets.</p>';
+    }
+}
+
+// --- Initialisation au chargement de la page ---
+document.addEventListener('DOMContentLoaded', () => {
+    loadAccounts();
+    loadWatchAccounts();
+    updateDashboard();
+    updateFoundTweets();
+    setInterval(updateDashboard, 10000); // Mettre à jour toutes les 10 secondes
+    setInterval(updateFoundTweets, 15000); // Mettre à jour toutes les 15 secondes
+});
+
+</script>
+<script src="ui.js"></script>
+</body>
+</html>
