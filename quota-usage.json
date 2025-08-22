@@ -1,0 +1,21 @@
+{
+  "globalUsage": {
+    "totalUsed": 0,
+    "remaining": 1000,
+    "firstUsage": null,
+    "lastUsage": null
+  },
+  "dailyUsage": {
+    "date": "2025-08-21",
+    "totalUsed": 0,
+    "remaining": 120,
+    "resetAt": "2025-08-21T22:00:00.000Z"
+  },
+  "accountsUsage": {},
+  "currentAllocation": {
+    "activeAccounts": 0,
+    "globalPerAccount": 0,
+    "dailyPerAccount": 0,
+    "lastRecalculation": "2025-08-20T11:59:17.216Z"
+  }
+}

@@ -1,0 +1,95 @@
+[
+  {
+    "id": "mock_1754433147678_mock_elonmusk_retweet_1754433147679",
+    "timestamp": "2025-08-05T22:32:27.679Z",
+    "tweetId": "mock_1754433147678",
+    "tweetUrl": "https://twitter.com/test/status/mock_1754433147678",
+    "tweetText": "This token is going to the moon! 🌙",
+    "tweetAuthor": "test_account",
+    "influencer": {
+      "id": "mock_elonmusk",
+      "username": "elonmusk",
+      "displayName": "Elon Musk",
+      "followerCount": 54000000,
+      "isVerified": true,
+      "tier": "MEGA",
+      "tierInfo": {
+        "min": 1000000,
+        "label": "Mega Influencer",
+        "emoji": "🐋",
+        "color": "#ff6b6b"
+      }
+    },
+    "interaction": {
+      "type": "retweet",
+      "text": null
+    },
+    "impact": {
+      "score": 450,
+      "estimatedReach": 8100000,
+      "tier": "MEGA"
+    }
+  },
+  {
+    "id": "mock_1754433136031_mock_naval_retweet_1754433136031",
+    "timestamp": "2025-08-05T22:32:16.031Z",
+    "tweetId": "mock_1754433136031",
+    "tweetUrl": "https://twitter.com/test/status/mock_1754433136031",
+    "tweetText": "The future of DeFi is here! #crypto",
+    "tweetAuthor": "test_account",
+    "influencer": {
+      "id": "mock_naval",
+      "username": "naval",
+      "displayName": "Naval",
+      "followerCount": 2100000,
+      "isVerified": true,
+      "tier": "MEGA",
+      "tierInfo": {
+        "min": 1000000,
+        "label": "Mega Influencer",
+        "emoji": "🐋",
+        "color": "#ff6b6b"
+      }
+    },
+    "interaction": {
+      "type": "retweet",
+      "text": null
+    },
+    "impact": {
+      "score": 450,
+      "estimatedReach": 315000,
+      "tier": "MEGA"
+    }
+  },
+  {
+    "id": "mock_1754433120549_mock_elonmusk_reply_1754433120550",
+    "timestamp": "2025-08-05T22:32:00.550Z",
+    "tweetId": "mock_1754433120549",
+    "tweetUrl": "https://twitter.com/test/status/mock_1754433120549",
+    "tweetText": "This token is going to the moon! 🌙",
+    "tweetAuthor": "test_account",
+    "influencer": {
+      "id": "mock_elonmusk",
+      "username": "elonmusk",
+      "displayName": "Elon Musk",
+      "followerCount": 54000000,
+      "isVerified": true,
+      "tier": "MEGA",
+      "tierInfo": {
+        "min": 1000000,
+        "label": "Mega Influencer",
+        "emoji": "🐋",
+        "color": "#ff6b6b"
+      }
+    },
+    "interaction": {
+      "type": "reply",
+      "text": "Great project! Looking forward to see more!"
+    },
+    "impact": {
+      "score": 750,
+      "estimatedReach": 2700000,
+      "tier": "MEGA"
+    }
+  }
+]

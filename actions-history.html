@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actions History - X-AutoRaider</title>
+    <script src="components/navbar.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-top: 70px;
+        }
+        
+        .container-fluid {
+            padding: 20px;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .header-card {
+            background: linear-gradient(135deg, #1da1f2 0%, #0d8bd9 100%);
+            color: white;
+        }
+        
+        
+        .stats-section {
+            margin-bottom: 25px;
+        }
+        
+        .filter-section {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .action-card {
+            border-left: 4px solid;
+            margin-bottom: 15px;
+            transition: transform 0.2s ease;
+        }
+        
+        .action-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .action-like { border-left-color: #e74c3c; }
+        .action-retweet { border-left-color: #27ae60; }
+        .action-reply { border-left-color: #3498db; }
+        
+        .action-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .icon-like { background: #e74c3c; }
+        .icon-retweet { background: #27ae60; }
+        .icon-reply { background: #3498db; }
+        
+        .tweet-preview {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            border-left: 3px solid #1da1f2;
+        }
+        
+        .account-badge {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .date-badge {
+            background: #6c757d;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+        
+        .stats-row {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+        }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .no-actions {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        
+        .btn-filter {
+            border-radius: 20px;
+            padding: 8px 20px;
+            margin: 5px;
+        }
+        
+        .btn-filter.active {
+            background: #1da1f2;
+            border-color: #1da1f2;
+            color: white;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding-top: 60px;
+            }
+            
+            .container-fluid {
+                padding: 10px;
+            }
+            
+            .card-body {
+                padding: 15px;
+            }
+            
+            .stats-row {
+                padding: 10px;
+            }
+            
+            .stat-number {
+                font-size: 20px;
+            }
+            
+            .filter-section {
+                padding: 15px;
+            }
+            
+            .btn-filter {
+                padding: 6px 15px;
+                margin: 3px;
+                font-size: 14px;
+            }
+            
+            .action-card {
+                margin-bottom: 10px;
+            }
+            
+            .action-icon {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding-top: 50px;
+            }
+            
+            .container-fluid {
+                padding: 5px;
+            }
+            
+            .card-body {
+                padding: 10px;
+            }
+            
+            .stats-row {
+                padding: 8px;
+            }
+            
+            .stat-number {
+                font-size: 18px;
+            }
+            
+            .filter-section {
+                padding: 10px;
+            }
+            
+            .btn-filter {
+                padding: 5px 12px;
+                margin: 2px;
+                font-size: 12px;
+            }
+            
+            .btn-sm {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+            
+            .action-icon {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+            
+            .tweet-preview {
+                padding: 8px;
+                font-size: 13px;
+            }
+        }
+        
+        @media (max-width: 320px) {
+            .container-fluid {
+                padding: 3px;
+            }
+            
+            .card-body h1 {
+                font-size: 1.5em;
+            }
+            
+            .stat-number {
+                font-size: 16px;
+            }
+            
+            .btn-filter {
+                padding: 4px 10px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="card header-card">
+            <div class="card-body text-center">
+                <h1 class="mb-0">
+                    <i class="bi bi-clock-history me-2"></i>
+                    Raid Action History
+                </h1>
+                <p class="mb-0 mt-2">Detailed tracking of all automated alpha raids and engagement</p>
+            </div>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="stats-row">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number text-danger" id="totalLikes">0</div>
+                        <div class="stat-label">Likes</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number text-success" id="totalRetweets">0</div>
+                        <div class="stat-label">Retweets</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number text-primary" id="totalReplies">0</div>
+                        <div class="stat-label">Alpha Replies</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number text-info" id="totalActions">0</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtres et Export -->
+        <div class="filter-section">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-person-circle me-1"></i>
+                        Raid Wallet
+                    </label>
+                    <select class="form-select" id="accountFilter">
+                        <option value="">All raid wallets</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-calendar-date me-1"></i>
+                        Start Date
+                    </label>
+                    <input type="date" class="form-control" id="dateFromFilter">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-calendar-date me-1"></i>
+                        End Date
+                    </label>
+                    <input type="date" class="form-control" id="dateToFilter">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Quick Filters</label>
+                    <div class="d-flex flex-column gap-1">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="filterByPeriod('today')">
+                            <i class="bi bi-calendar-day me-1"></i> Today
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="filterByPeriod('week')">
+                            <i class="bi bi-calendar-week me-1"></i> This Week
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="filterByPeriod('month')">
+                            <i class="bi bi-calendar-month me-1"></i> This Month
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Actions</label>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-primary btn-sm" onclick="refreshData()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" id="toggleCharts" onclick="toggleChartsView()">
+                            <i class="bi bi-bar-chart me-1"></i> Analytics
+                        </button>
+                        <button class="btn btn-success btn-sm" onclick="exportData('csv')">
+                            <i class="bi bi-file-earmark-spreadsheet me-1"></i> CSV
+                        </button>
+                        <button class="btn btn-info btn-sm" onclick="exportData('json')">
+                            <i class="bi bi-file-earmark-code me-1"></i> JSON
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="d-flex flex-wrap">
+                        <button class="btn btn-outline-primary btn-filter active" data-action="all">
+                            All Actions
+                        </button>
+                        <button class="btn btn-outline-danger btn-filter" data-action="like">
+                            <i class="bi bi-heart-fill me-1"></i> Likes
+                        </button>
+                        <button class="btn btn-outline-success btn-filter" data-action="retweet">
+                            <i class="bi bi-arrow-repeat me-1"></i> Retweets
+                        </button>
+                        <button class="btn btn-outline-primary btn-filter" data-action="reply">
+                            <i class="bi bi-chat-fill me-1"></i> Alpha Replies
+                        </button>
+                        <button class="btn btn-secondary ms-auto" onclick="clearFilters()">
+                            <i class="bi bi-x-circle me-1"></i> Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Analytics (masquée par défaut) -->
+        <div id="analyticsSection" style="display: none;">
+            <!-- Graphiques temporels -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-graph-up me-2"></i>Temporal Analysis</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <canvas id="hourlyChart" width="400" height="300"></canvas>
+                            <h6 class="text-center mt-2">Actions per Hour</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <canvas id="dailyChart" width="400" height="300"></canvas>
+                            <h6 class="text-center mt-2">Actions per Day</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <canvas id="weeklyChart" width="400" height="300"></canvas>
+                            <h6 class="text-center mt-2">Actions per Week</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Heatmap -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-grid-3x3-gap me-2"></i>Activity Heatmap</h5>
+                </div>
+                <div class="card-body">
+                    <div id="heatmapContainer">
+                        <canvas id="heatmapChart" width="800" height="200"></canvas>
+                        <p class="text-center mt-2 text-muted">Action intensity by day of week and hour</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zone de chargement -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading raid history...</p>
+        </div>
+
+        <!-- Liste des actions -->
+        <div id="actionsContainer">
+            <!-- Les actions seront chargées ici -->
+        </div>
+
+        <!-- Message si aucune action -->
+        <div class="no-actions" id="noActions" style="display: none;">
+            <i class="bi bi-inbox" style="font-size: 48px; color: #dee2e6;"></i>
+            <h4 class="mt-3">No Raid Actions Found</h4>
+            <p>No actions match the selected filters. Try adjusting your search criteria.</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let allActions = [];
+        let accounts = [];
+        let filteredActions = [];
+        let timeStats = {};
+        let heatmapData = {};
+        let charts = {};
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAccounts();
+            loadActions();
+            setupEventListeners();
+        });
+
+        // Charger les comptes
+        async function loadAccounts() {
+            try {
+                const response = await fetch('/api/accounts');
+                const data = await response.json();
+                
+                // Vérifier que les données sont un tableau
+                if (Array.isArray(data)) {
+                    accounts = data;
+                } else if (data && Array.isArray(data.accounts)) {
+                    accounts = data.accounts;
+                } else {
+                    console.warn('Format de données comptes inattendu:', data);
+                    accounts = [];
+                    return;
+                }
+                
+                const accountSelect = document.getElementById('accountFilter');
+                accounts.forEach(account => {
+                    const option = document.createElement('option');
+                    option.value = account.id;
+                    option.textContent = `@${account.username}`;
+                    accountSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+                accounts = []; // Initialiser comme tableau vide en cas d'erreur
+            }
+        }
+
+        // Charger l'historique des actions
+        async function loadActions() {
+            document.getElementById('loadingSpinner').style.display = 'block';
+            document.getElementById('actionsContainer').innerHTML = '';
+            
+            console.log('=== STARTING LOAD ACTIONS ===');
+            
+            try {
+                console.log('Fetching /api/actions-history...');
+                const response = await fetch('/api/actions-history');
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response received, parsing...');
+                
+                allActions = parseActionsData(data);
+                filteredActions = [...allActions];
+                
+                // Stocker les données d'analytics
+                timeStats = data.timeStats || {};
+                heatmapData = data.heatmapData || {};
+                
+                console.log('=== DEBUG ANALYTICS ===');
+                console.log('Full API Response:', data);
+                console.log('TimeStats loaded:', timeStats);
+                console.log('HeatmapData loaded:', heatmapData);
+                console.log('Actions count:', allActions.length);
+                console.log('======================');
+                
+                updateStatistics();
+                renderActions();
+                
+            } catch (error) {
+                console.error('Error loading history:', error);
+                showError('Error loading actions history');
+            } finally {
+                document.getElementById('loadingSpinner').style.display = 'none';
+            }
+        }
+
+        // Parser les données d'actions
+        function parseActionsData(data) {
+            const actions = [];
+            
+            // 🔄 NOUVELLE LOGIQUE : Utiliser les données de l'API enrichie
+            if (data && data.actions && Array.isArray(data.actions)) {
+                // Utiliser directement les actions formatées de l'API
+                return data.actions.map(action => ({
+                    tweetId: action.tweetId,
+                    accountId: action.accountId,
+                    accountUsername: action.accountUsername,
+                    actionType: action.actionType,
+                    timestamp: new Date(action.timestamp),
+                    tweetData: action.tweetData || null
+                }));
+            }
+            
+            // Fallback sur l'ancienne structure si nécessaire
+            if (!data || !data.performedActions) {
+                console.warn('Invalid or empty actions-history data:', data);
+                return actions;
+            }
+            
+            try {
+                Object.entries(data.performedActions).forEach(([tweetId, accounts]) => {
+                    if (!accounts || typeof accounts !== 'object') {
+                        console.warn('Invalid account data for tweet:', tweetId);
+                        return;
+                    }
+                    
+                    Object.entries(accounts).forEach(([accountId, actionTypes]) => {
+                        if (!actionTypes || typeof actionTypes !== 'object') {
+                            console.warn('Invalid action types for account:', accountId);
+                            return;
+                        }
+                        
+                        Object.entries(actionTypes).forEach(([actionType, timestamp]) => {
+                            if (!timestamp) {
+                                console.warn('Invalid timestamp for action:', actionType);
+                                return;
+                            }
+                            
+                            const account = getAccountById(accountId);
+                            actions.push({
+                                tweetId,
+                                accountId,
+                                accountUsername: account ? account.username : `Account ${accountId}`,
+                                actionType,
+                                timestamp: new Date(timestamp),
+                                tweetData: data.tweetsData ? data.tweetsData[tweetId] : null
+                            });
+                        });
+                    });
+                });
+            } catch (error) {
+                console.error('Error parsing data:', error);
+            }
+            
+            // Trier par date décroissante (plus récent en premier)
+            return actions.sort((a, b) => b.timestamp - a.timestamp);
+        }
+
+        // Obtenir un compte par ID
+        function getAccountById(accountId) {
+            if (!Array.isArray(accounts)) {
+                console.warn('accounts is not an array:', accounts);
+                return null;
+            }
+            return accounts.find(account => account.id === accountId);
+        }
+
+        // Mettre à jour les statistiques
+        function updateStatistics() {
+            const stats = {
+                likes: filteredActions.filter(a => a.actionType === 'like').length,
+                retweets: filteredActions.filter(a => a.actionType === 'retweet').length,
+                replies: filteredActions.filter(a => a.actionType === 'reply').length
+            };
+            
+            document.getElementById('totalLikes').textContent = stats.likes;
+            document.getElementById('totalRetweets').textContent = stats.retweets;
+            document.getElementById('totalReplies').textContent = stats.replies;
+            document.getElementById('totalActions').textContent = stats.likes + stats.retweets + stats.replies;
+        }
+
+        // Afficher les actions
+        function renderActions() {
+            const container = document.getElementById('actionsContainer');
+            const noActions = document.getElementById('noActions');
+            
+            if (filteredActions.length === 0) {
+                container.innerHTML = '';
+                noActions.style.display = 'block';
+                return;
+            }
+            
+            noActions.style.display = 'none';
+            
+            const actionsHtml = filteredActions.map(action => createActionCard(action)).join('');
+            container.innerHTML = actionsHtml;
+        }
+
+        // Créer une carte d'action
+        function createActionCard(action) {
+            const actionIcons = {
+                like: { icon: 'bi-heart-fill', class: 'icon-like', label: 'Like' },
+                retweet: { icon: 'bi-arrow-repeat', class: 'icon-retweet', label: 'Retweet' },
+                reply: { icon: 'bi-chat-fill', class: 'icon-reply', label: 'Reply' }
+            };
+            
+            const actionInfo = actionIcons[action.actionType];
+            const formattedDate = action.timestamp.toLocaleString('en-US');
+            const tweetUrl = `https://twitter.com/i/status/${action.tweetId}`;
+            
+            return `
+                <div class="card action-card action-${action.actionType}">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <div class="action-icon ${actionInfo.class}">
+                                    <i class="${actionInfo.icon}"></i>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            ${actionInfo.label}
+                                            <span class="account-badge ms-2">@${action.accountUsername}</span>
+                                        </h6>
+                                        <p class="mb-1 text-muted">
+                                            <i class="bi bi-twitter me-1"></i>
+                                            Tweet ID: ${action.tweetId}
+                                            <a href="${tweetUrl}" target="_blank" class="ms-2">
+                                                <i class="bi bi-box-arrow-up-right"></i>
+                                            </a>
+                                        </p>
+                                    </div>
+                                    <span class="date-badge">${formattedDate}</span>
+                                </div>
+                                ${action.tweetData ? createTweetPreview(action.tweetData) : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Créer un aperçu du tweet
+        function createTweetPreview(tweetData) {
+            if (!tweetData) return '';
+            
+            const text = tweetData.text ? tweetData.text.substring(0, 150) + (tweetData.text.length > 150 ? '...' : '') : 'Content not available';
+            const author = tweetData.author_username || 'Unknown user';
+            
+            return `
+                <div class="tweet-preview">
+                    <small class="text-muted">
+                        <i class="bi bi-person-circle me-1"></i>
+                        @${author}
+                    </small>
+                    <p class="mb-0 mt-1">${text}</p>
+                </div>
+            `;
+        }
+
+        // Configuration des événements
+        function setupEventListeners() {
+            // Filtres de type d'action
+            document.querySelectorAll('.btn-filter[data-action]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.btn-filter[data-action]').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    applyFilters();
+                });
+            });
+
+            // Filtres de date et compte
+            document.getElementById('accountFilter').addEventListener('change', applyFilters);
+            document.getElementById('dateFromFilter').addEventListener('change', applyFilters);
+            document.getElementById('dateToFilter').addEventListener('change', applyFilters);
+        }
+
+        // Appliquer les filtres
+        function applyFilters() {
+            const actionFilter = document.querySelector('.btn-filter[data-action].active').dataset.action;
+            const accountFilter = document.getElementById('accountFilter').value;
+            const dateFromFilter = document.getElementById('dateFromFilter').value;
+            const dateToFilter = document.getElementById('dateToFilter').value;
+
+            filteredActions = allActions.filter(action => {
+                // Filtre par type d'action
+                if (actionFilter !== 'all' && action.actionType !== actionFilter) {
+                    return false;
+                }
+
+                // Filtre par compte
+                if (accountFilter && action.accountId !== accountFilter) {
+                    return false;
+                }
+
+                // Filtre par date
+                if (dateFromFilter) {
+                    const fromDate = new Date(dateFromFilter);
+                    if (action.timestamp < fromDate) {
+                        return false;
+                    }
+                }
+
+                if (dateToFilter) {
+                    const toDate = new Date(dateToFilter);
+                    toDate.setHours(23, 59, 59, 999); // Fin de journée
+                    if (action.timestamp > toDate) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            updateStatistics();
+            renderActions();
+        }
+
+        // Effacer tous les filtres
+        function clearFilters() {
+            document.getElementById('accountFilter').value = '';
+            document.getElementById('dateFromFilter').value = '';
+            document.getElementById('dateToFilter').value = '';
+            
+            document.querySelectorAll('.btn-filter[data-action]').forEach(b => b.classList.remove('active'));
+            document.querySelector('.btn-filter[data-action="all"]').classList.add('active');
+            
+            filteredActions = [...allActions];
+            updateStatistics();
+            renderActions();
+        }
+
+        // Afficher une erreur
+        function showError(message) {
+            const container = document.getElementById('actionsContainer');
+            container.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    ${message}
+                </div>
+            `;
+        }
+
+        // Actualiser les données
+        function refreshData() {
+            loadActions();
+        }
+
+        // Fonctions pour les analytics
+        function toggleChartsView() {
+            const analyticsSection = document.getElementById('analyticsSection');
+            const toggleBtn = document.getElementById('toggleCharts');
+            
+            if (analyticsSection.style.display === 'none') {
+                analyticsSection.style.display = 'block';
+                toggleBtn.innerHTML = '<i class="bi bi-list me-1"></i> List View';
+                toggleBtn.classList.remove('btn-outline-info');
+                toggleBtn.classList.add('btn-info');
+                createCharts();
+            } else {
+                analyticsSection.style.display = 'none';
+                toggleBtn.innerHTML = '<i class="bi bi-bar-chart me-1"></i> Analytics';
+                toggleBtn.classList.remove('btn-info');
+                toggleBtn.classList.add('btn-outline-info');
+            }
+        }
+
+        function createCharts() {
+            console.log('=== CREATING CHARTS ===');
+            console.log('Available timeStats:', timeStats);
+            console.log('Available heatmapData:', heatmapData);
+            
+            // Graphique par heure
+            createHourlyChart();
+            // Graphique par jour
+            createDailyChart();
+            // Graphique par semaine
+            createWeeklyChart();
+            // Heatmap
+            createHeatmap();
+            
+            console.log('=== CHARTS CREATED ===');
+        }
+
+        function createHourlyChart() {
+            const ctx = document.getElementById('hourlyChart').getContext('2d');
+            
+            if (charts.hourly) {
+                charts.hourly.destroy();
+            }
+            
+            const hours = Array.from({length: 24}, (_, i) => i);
+            const data = hours.map(hour => timeStats.hourly?.[hour]?.total || 0);
+            
+            charts.hourly = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: hours.map(h => h + 'h'),
+                    datasets: [{
+                        label: 'Actions',
+                        data: data,
+                        backgroundColor: 'rgba(29, 161, 242, 0.6)',
+                        borderColor: 'rgba(29, 161, 242, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function createDailyChart() {
+            const ctx = document.getElementById('dailyChart').getContext('2d');
+            
+            if (charts.daily) {
+                charts.daily.destroy();
+            }
+            
+            const days = Object.keys(timeStats.daily || {}).sort();
+            const data = days.map(day => timeStats.daily[day].total);
+            
+            charts.daily = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: days.map(d => new Date(d).toLocaleDateString('en-US')),
+                    datasets: [{
+                        label: 'Actions',
+                        data: data,
+                        backgroundColor: 'rgba(39, 174, 96, 0.2)',
+                        borderColor: 'rgba(39, 174, 96, 1)',
+                        borderWidth: 2,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function createWeeklyChart() {
+            const ctx = document.getElementById('weeklyChart').getContext('2d');
+            
+            if (charts.weekly) {
+                charts.weekly.destroy();
+            }
+            
+            const weeks = Object.keys(timeStats.weekly || {}).sort();
+            const data = weeks.map(week => timeStats.weekly[week].total);
+            
+            charts.weekly = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: weeks.map(w => `Week ${w}`),
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            'rgba(231, 76, 60, 0.8)',
+                            'rgba(52, 152, 219, 0.8)',
+                            'rgba(46, 204, 113, 0.8)',
+                            'rgba(155, 89, 182, 0.8)',
+                            'rgba(241, 196, 15, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        function createHeatmap() {
+            const canvas = document.getElementById('heatmapChart');
+            const ctx = canvas.getContext('2d');
+            
+            // Nettoyer le canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const hours = Array.from({length: 24}, (_, i) => i);
+            
+            const cellWidth = canvas.width / 24;
+            const cellHeight = canvas.height / 7;
+            
+            // Trouver la valeur max pour la normalisation
+            const maxValue = Math.max(...Object.values(heatmapData || {}));
+            
+            // Dessiner la heatmap
+            for (let day = 0; day < 7; day++) {
+                for (let hour = 0; hour < 24; hour++) {
+                    const value = heatmapData[`${day}_${hour}`] || 0;
+                    const intensity = maxValue > 0 ? value / maxValue : 0;
+                    
+                    // Couleur basée sur l'intensité
+                    const alpha = intensity * 0.8 + 0.1;
+                    ctx.fillStyle = `rgba(29, 161, 242, ${alpha})`;
+                    
+                    ctx.fillRect(hour * cellWidth, day * cellHeight, cellWidth - 1, cellHeight - 1);
+                    
+                    // Texte si valeur > 0
+                    if (value > 0) {
+                        ctx.fillStyle = intensity > 0.5 ? 'white' : 'black';
+                        ctx.font = '10px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(value, hour * cellWidth + cellWidth/2, day * cellHeight + cellHeight/2 + 3);
+                    }
+                }
+            }
+            
+            // Labels des jours
+            ctx.fillStyle = 'black';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
+            for (let day = 0; day < 7; day++) {
+                ctx.fillText(days[day], -5, day * cellHeight + cellHeight/2 + 4);
+            }
+            
+            // Labels des heures
+            ctx.textAlign = 'center';
+            for (let hour = 0; hour < 24; hour += 2) {
+                ctx.fillText(hour + 'h', hour * cellWidth + cellWidth/2, canvas.height + 15);
+            }
+        }
+
+        // Export des données
+        function exportData(format) {
+            const currentFilters = new URLSearchParams();
+            
+            const actionFilter = document.querySelector('.btn-filter[data-action].active').dataset.action;
+            if (actionFilter && actionFilter !== 'all') {
+                currentFilters.append('type', actionFilter);
+            }
+            
+            currentFilters.append('format', format);
+            
+            const url = `/api/actions-history/export?${currentFilters.toString()}`;
+            
+            // Créer un lien de téléchargement
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `raid-actions-${new Date().toISOString().split('T')[0]}.${format}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Notification
+            showNotification(`${format.toUpperCase()} export in progress...`, 'info');
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            notification.style.top = '20px';
+            notification.style.right = '20px';
+            notification.style.zIndex = '9999';
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove après 3 secondes
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 3000);
+        }
+
+        // Quick filter functions
+        function filterByPeriod(period) {
+            const now = new Date();
+            let startDate;
+            
+            switch(period) {
+                case 'today':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    break;
+                case 'week':
+                    const dayOfWeek = now.getDay();
+                    startDate = new Date(now.getTime() - (dayOfWeek * 24 * 60 * 60 * 1000));
+                    startDate.setHours(0, 0, 0, 0);
+                    break;
+                case 'month':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                    break;
+                default:
+                    return;
+            }
+            
+            // Set date filters
+            document.getElementById('dateFromFilter').value = startDate.toISOString().split('T')[0];
+            document.getElementById('dateToFilter').value = now.toISOString().split('T')[0];
+            
+            // Apply filters
+            applyFilters();
+        }
+
+        // Removed auto-refresh - manual refresh only
+    </script>
+</body>
+</html>

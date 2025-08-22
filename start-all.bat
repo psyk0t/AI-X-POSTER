@@ -1,5 +1,5 @@
 @echo off
-REM Script de démarrage automatique du projet X-AutoPost
+REM Script de démarrage automatique du projet AutoRaider
 
 REM 1. Installation des dépendances si besoin
 if not exist node_modules (
@@ -8,7 +8,7 @@ if not exist node_modules (
 )
 
 REM 2. Lancement du backend en arrière-plan
-start "X-AutoPost Backend" cmd /k "node server.js"
+start "AutoRaider Backend" cmd /k "node server.js"
 
 REM 3. Ouverture du frontend dans le navigateur par défaut
 start "" index.html

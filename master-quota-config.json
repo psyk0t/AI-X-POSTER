@@ -1,0 +1,247 @@
+{
+  "version": "2.0.0",
+  "deployedBy": "Developer",
+  "deployedAt": "2025-08-20T10:10:00Z",
+  "clientId": "psyk0t-raid-client",
+  "globalPack": {
+    "totalActions": 1000,
+    "usedActions": 268,
+    "remainingActions": 732,
+    "purchaseDate": "2025-08-13",
+    "expiryDate": null,
+    "packType": "premium"
+  },
+  "dailyQuotas": {
+    "dailyLimit": 1200,
+    "lastReset": "2025-08-22",
+    "used": 0,
+    "usedToday": 268,
+    "distribution": {
+      "like": 42,
+      "retweet": 18,
+      "reply": 208
+    }
+  },
+  "actionProbabilities": {
+    "reply": 1,
+    "like": 0.1,
+    "retweet": 0.05
+  },
+  "connectedAccounts": {
+    "153720161": {
+      "username": "psyk0t",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-20T08:42:24.871Z",
+      "actionsUsed": 76,
+      "dailyUsed": {
+        "like": 7,
+        "retweet": 3,
+        "reply": 45
+      },
+      "isActive": true,
+      "lastReset": "2025-08-20",
+      "lastAction": "2025-08-22T16:06:09.857Z",
+      "disconnectedAt": "2025-08-21T15:44:21.843Z"
+    },
+    "303900949": {
+      "username": "wicce0710",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-20T12:05:44.796Z",
+      "actionsUsed": 0,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": false,
+      "lastReset": "2025-08-20",
+      "lastAction": "2025-08-20T12:30:24.674Z"
+    },
+    "460206587": {
+      "username": "uw514",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-20T12:23:44.793Z",
+      "actionsUsed": 0,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": false,
+      "lastReset": "2025-08-20"
+    },
+    "547832333": {
+      "username": "yashi190",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-20T09:54:05.208Z",
+      "actionsUsed": 84,
+      "dailyUsed": {
+        "like": 10,
+        "retweet": 6,
+        "reply": 61
+      },
+      "isActive": true,
+      "lastReset": "2025-08-20",
+      "lastAction": "2025-08-22T16:12:50.746Z"
+    },
+    "1032493598": {
+      "username": "nbenavidesribic",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-20T19:07:47.390Z",
+      "actionsUsed": 35,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": false,
+      "lastReset": "2025-08-20",
+      "lastAction": "2025-08-21T00:09:15.483Z"
+    },
+    "2440510039": {
+      "username": "tuikyasuyoutori",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-22T06:52:36.766Z",
+      "actionsUsed": 83,
+      "dailyUsed": {
+        "like": 13,
+        "retweet": 4,
+        "reply": 66
+      },
+      "isActive": true,
+      "lastReset": "2025-08-22",
+      "lastAction": "2025-08-22T16:09:04.108Z"
+    },
+    "2754858140": {
+      "username": "yudakumgm",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-20T09:56:07.472Z",
+      "actionsUsed": 0,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": false,
+      "lastReset": "2025-08-20",
+      "lastAction": "2025-08-20T16:28:11.764Z"
+    },
+    "1766748886276927488": {
+      "username": "PrinceNganooSOL",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-20T08:43:34.868Z",
+      "actionsUsed": 53,
+      "dailyUsed": {
+        "like": 12,
+        "retweet": 5,
+        "reply": 36
+      },
+      "isActive": true,
+      "lastReset": "2025-08-20",
+      "lastAction": "2025-08-22T13:00:20.010Z",
+      "disconnectedAt": "2025-08-22T06:50:09.866Z",
+      "reconnectedAt": "2025-08-21T15:48:50.331Z"
+    },
+    "test_account_123": {
+      "username": "test_user",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-21T07:40:12.887Z",
+      "actionsUsed": 0,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": false,
+      "lastReset": "2025-08-21"
+    },
+    "sim_account_1": {
+      "username": "sim_user_1",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-21T07:40:12.899Z",
+      "actionsUsed": 270,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": false,
+      "lastReset": "2025-08-21",
+      "lastAction": "2025-08-21T07:40:13.218Z"
+    },
+    "sim_account_2": {
+      "username": "sim_user_2",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-21T07:40:12.901Z",
+      "actionsUsed": 270,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": false,
+      "lastReset": "2025-08-21",
+      "lastAction": "2025-08-21T07:40:13.556Z"
+    },
+    "sim_account_3": {
+      "username": "sim_user_3",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-21T07:40:12.903Z",
+      "actionsUsed": 270,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": false,
+      "lastReset": "2025-08-21",
+      "lastAction": "2025-08-21T07:40:13.954Z"
+    }
+  },
+  "allocation": {
+    "perAccountQuota": 219,
+    "perAccountDaily": 300,
+    "lastRecalculation": "2025-08-22T12:07:48.607Z"
+  },
+  "restrictions": {
+    "clientCanModify": true,
+    "adminCanModify": true,
+    "onlyDeveloperCanModify": false
+  },
+  "notes": {
+    "globalPack": "Pack d'actions acheté par le client - partagé dynamiquement entre comptes connectés",
+    "dailyQuotas": "Limite quotidienne fixe pour respecter les limites API X - partagée dynamiquement",
+    "actionProbabilities": "Distribution automatique : 100% reply (obligatoire), 30% like (aléatoire), 5% retweet (aléatoire)",
+    "allocation": "Répartition automatique des quotas entre comptes actifs"
+  },
+  "twitterRateLimits": {
+    "daily": {
+      "tweets": 300,
+      "likes": 1000,
+      "retweets": 300,
+      "follows": 400,
+      "unfollows": 300,
+      "search": 300
+    },
+    "per15min": {
+      "tweets": 50,
+      "likes": 75,
+      "retweets": 75,
+      "follows": 50,
+      "unfollows": 50,
+      "search": 180
+    },
+    "safetyMargins": {
+      "daily": 0.8,
+      "per15min": 0.7
+    }
+  },
+  "per15MinTracking": {
+    "tweets": [],
+    "likes": [],
+    "retweets": [],
+    "follows": [],
+    "unfollows": [],
+    "search": []
+  }
+}

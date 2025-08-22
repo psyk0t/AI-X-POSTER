@@ -1,0 +1,214 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "automationStatus":  {
+                                          "enabled":  false,
+                                          "scanning":  true,
+                                          "lastScan":  "2025-08-13T21:07:31.008Z"
+                                      },
+                 "accountsStatus":  [
+                                        {
+                                            "id":  "153720161",
+                                            "username":  "@psyk0t",
+                                            "status":  "active",
+                                            "lastAction":  "2025-08-13T21:02:31.008Z",
+                                            "actionsPlanned":  87,
+                                            "authMethod":  "oauth2",
+                                            "quotaUsed":  49
+                                        }
+                                    ],
+                 "detectedTweets":  [
+                                        {
+                                            "id":  "tweet_1755119251008_0",
+                                            "content":  "29 comptes surveillés actifs - Tweet détecté #1",
+                                            "author":  "@influencer_1",
+                                            "timestamp":  "2025-08-13T21:07:31.008Z",
+                                            "source":  "watch_accounts_scan",
+                                            "type":  "detected_tweet",
+                                            "engagement":  152
+                                        },
+                                        {
+                                            "id":  "tweet_1755119251008_1",
+                                            "content":  "29 comptes surveillés actifs - Tweet détecté #2",
+                                            "author":  "@influencer_2",
+                                            "timestamp":  "2025-08-13T21:02:31.008Z",
+                                            "source":  "watch_accounts_scan",
+                                            "type":  "detected_tweet",
+                                            "engagement":  937
+                                        },
+                                        {
+                                            "id":  "tweet_1755119251008_2",
+                                            "content":  "29 comptes surveillés actifs - Tweet détecté #3",
+                                            "author":  "@influencer_3",
+                                            "timestamp":  "2025-08-13T20:57:31.008Z",
+                                            "source":  "watch_accounts_scan",
+                                            "type":  "detected_tweet",
+                                            "engagement":  829
+                                        },
+                                        {
+                                            "id":  "tweet_1755119251008_3",
+                                            "content":  "29 comptes surveillés actifs - Tweet détecté #4",
+                                            "author":  "@influencer_4",
+                                            "timestamp":  "2025-08-13T20:52:31.008Z",
+                                            "source":  "watch_accounts_scan",
+                                            "type":  "detected_tweet",
+                                            "engagement":  814
+                                        },
+                                        {
+                                            "id":  "tweet_1755119251008_4",
+                                            "content":  "29 comptes surveillés actifs - Tweet détecté #5",
+                                            "author":  "@influencer_5",
+                                            "timestamp":  "2025-08-13T20:47:31.008Z",
+                                            "source":  "watch_accounts_scan",
+                                            "type":  "detected_tweet",
+                                            "engagement":  964
+                                        },
+                                        {
+                                            "id":  "tweet_1755119251008_5",
+                                            "content":  "29 comptes surveillés actifs - Tweet détecté #6",
+                                            "author":  "@influencer_6",
+                                            "timestamp":  "2025-08-13T20:42:31.008Z",
+                                            "source":  "watch_accounts_scan",
+                                            "type":  "detected_tweet",
+                                            "engagement":  995
+                                        },
+                                        {
+                                            "id":  "tweet_1755119251008_6",
+                                            "content":  "29 comptes surveillés actifs - Tweet détecté #7",
+                                            "author":  "@influencer_7",
+                                            "timestamp":  "2025-08-13T20:37:31.008Z",
+                                            "source":  "watch_accounts_scan",
+                                            "type":  "detected_tweet",
+                                            "engagement":  466
+                                        },
+                                        {
+                                            "id":  "tweet_1755119251008_7",
+                                            "content":  "29 comptes surveillés actifs - Tweet détecté #8",
+                                            "author":  "@influencer_8",
+                                            "timestamp":  "2025-08-13T20:32:31.008Z",
+                                            "source":  "watch_accounts_scan",
+                                            "type":  "detected_tweet",
+                                            "engagement":  743
+                                        }
+                                    ],
+                 "plannedActions":  [
+                                        {
+                                            "id":  "action_1755119251008_0",
+                                            "accountId":  "account_1",
+                                            "accountUsername":  "@compte_1",
+                                            "type":  "reply",
+                                            "targetTweetId":  "tweet_1755119251008_0",
+                                            "targetContent":  "Tweet ciblé pour reply #1",
+                                            "scheduledTime":  "2025-08-13T21:07:31.008Z",
+                                            "status":  "pending",
+                                            "priority":  "high"
+                                        },
+                                        {
+                                            "id":  "action_1755119251008_1",
+                                            "accountId":  "account_1",
+                                            "accountUsername":  "@compte_1",
+                                            "type":  "like",
+                                            "targetTweetId":  "tweet_1755119251008_1",
+                                            "targetContent":  "Tweet ciblé pour like #2",
+                                            "scheduledTime":  "2025-08-13T21:10:31.008Z",
+                                            "status":  "pending",
+                                            "priority":  "normal"
+                                        },
+                                        {
+                                            "id":  "action_1755119251008_2",
+                                            "accountId":  "account_1",
+                                            "accountUsername":  "@compte_1",
+                                            "type":  "like",
+                                            "targetTweetId":  "tweet_1755119251008_2",
+                                            "targetContent":  "Tweet ciblé pour like #3",
+                                            "scheduledTime":  "2025-08-13T21:13:31.008Z",
+                                            "status":  "pending",
+                                            "priority":  "normal"
+                                        },
+                                        {
+                                            "id":  "action_1755119251008_3",
+                                            "accountId":  "account_1",
+                                            "accountUsername":  "@compte_1",
+                                            "type":  "retweet",
+                                            "targetTweetId":  "tweet_1755119251008_3",
+                                            "targetContent":  "Tweet ciblé pour retweet #4",
+                                            "scheduledTime":  "2025-08-13T21:16:31.008Z",
+                                            "status":  "pending",
+                                            "priority":  "normal"
+                                        },
+                                        {
+                                            "id":  "action_1755119251008_4",
+                                            "accountId":  "account_1",
+                                            "accountUsername":  "@compte_1",
+                                            "type":  "like",
+                                            "targetTweetId":  "tweet_1755119251008_4",
+                                            "targetContent":  "Tweet ciblé pour like #5",
+                                            "scheduledTime":  "2025-08-13T21:19:31.008Z",
+                                            "status":  "pending",
+                                            "priority":  "normal"
+                                        },
+                                        {
+                                            "id":  "action_1755119251008_5",
+                                            "accountId":  "account_1",
+                                            "accountUsername":  "@compte_1",
+                                            "type":  "reply",
+                                            "targetTweetId":  "tweet_1755119251008_5",
+                                            "targetContent":  "Tweet ciblé pour reply #6",
+                                            "scheduledTime":  "2025-08-13T21:22:31.008Z",
+                                            "status":  "pending",
+                                            "priority":  "high"
+                                        },
+                                        {
+                                            "id":  "action_1755119251008_6",
+                                            "accountId":  "account_1",
+                                            "accountUsername":  "@compte_1",
+                                            "type":  "retweet",
+                                            "targetTweetId":  "tweet_1755119251008_6",
+                                            "targetContent":  "Tweet ciblé pour retweet #7",
+                                            "scheduledTime":  "2025-08-13T21:25:31.008Z",
+                                            "status":  "pending",
+                                            "priority":  "normal"
+                                        },
+                                        {
+                                            "id":  "action_1755119251008_7",
+                                            "accountId":  "account_1",
+                                            "accountUsername":  "@compte_1",
+                                            "type":  "like",
+                                            "targetTweetId":  "tweet_1755119251008_7",
+                                            "targetContent":  "Tweet ciblé pour like #8",
+                                            "scheduledTime":  "2025-08-13T21:28:31.008Z",
+                                            "status":  "pending",
+                                            "priority":  "normal"
+                                        },
+                                        {
+                                            "id":  "action_1755119251008_8",
+                                            "accountId":  "account_1",
+                                            "accountUsername":  "@compte_1",
+                                            "type":  "like",
+                                            "targetTweetId":  "tweet_1755119251008_0",
+                                            "targetContent":  "Tweet ciblé pour like #9",
+                                            "scheduledTime":  "2025-08-13T21:31:31.008Z",
+                                            "status":  "pending",
+                                            "priority":  "normal"
+                                        },
+                                        {
+                                            "id":  "action_1755119251008_9",
+                                            "accountId":  "account_1",
+                                            "accountUsername":  "@compte_1",
+                                            "type":  "retweet",
+                                            "targetTweetId":  "tweet_1755119251008_1",
+                                            "targetContent":  "Tweet ciblé pour retweet #10",
+                                            "scheduledTime":  "2025-08-13T21:34:31.008Z",
+                                            "status":  "pending",
+                                            "priority":  "normal"
+                                        }
+                                    ],
+                 "summary":  {
+                                 "totalAccounts":  1,
+                                 "activeAccounts":  1,
+                                 "pausedAccounts":  0,
+                                 "tweetsToProcess":  29,
+                                 "totalPlannedActions":  87
+                             }
+             }
+}

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback - X-AutoRaider</title>
+    <script src="components/navbar.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 80px 20px 20px 20px;
+        }
+        
+        .container { max-width: 480px; margin: 48px auto; background: #fff; border-radius: 18px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); padding: 2.5rem 2rem; }
+        h1 { color: #1da1f2; margin-bottom: 0.3em; }
+        .desc { color: #444; margin-bottom: 1.7em; }
+        label { font-weight: 500; color: #1991db; }
+        textarea, input[type="email"] { width: 100%; padding: 0.7em 1em; border-radius: 8px; border: 1px solid #e1e8ed; margin-bottom: 1.2em; font-size: 1em; }
+        textarea { min-height: 90px; resize: vertical; }
+        .btn { background: #1da1f2; color: #fff; border: none; padding: 0.8em 2em; border-radius: 8px; font-size: 1em; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background: #0d8ddb; }
+        .success, .error { margin-top: 1.2em; padding: 0.8em 1em; border-radius: 8px; font-weight: 500; }
+        .success { background: #eafaf1; color: #17bf63; border-left: 5px solid #17bf63; }
+        .error { background: #fdeaea; color: #e0245e; border-left: 5px solid #e0245e; }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 70px 10px 10px 10px;
+            }
+            
+            .container {
+                margin: 20px auto;
+                padding: 1.5rem 1rem;
+                border-radius: 12px;
+            }
+            
+            h1 {
+                font-size: 1.5em;
+            }
+            
+            .desc {
+                font-size: 0.9em;
+            }
+            
+            textarea, input[type="email"], select {
+                font-size: 16px; /* Évite le zoom sur iOS */
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 60px 5px 5px 5px;
+            }
+            
+            .container {
+                margin: 10px auto;
+                padding: 1rem 0.8rem;
+                max-width: 95%;
+            }
+            
+            h1 {
+                font-size: 1.3em;
+            }
+            
+            .btn {
+                padding: 0.9em 1.5em;
+                font-size: 0.9em;
+            }
+        }
+        
+        @media (max-width: 320px) {
+            .container {
+                padding: 0.8rem 0.6rem;
+            }
+            
+            h1 {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-comment-dots"></i> Send Feedback</h1>
+        <div class="desc">Your feedback helps us improve AutoRaider. Suggestions and bug reports are welcome!<br>All feedback is anonymous unless you provide your email.</div>
+        <form id="feedbackForm">
+            <label for="type">Type of Feedback</label><br>
+            <select id="type" name="type" required style="width:100%;padding:0.7em 1em;border-radius:8px;border:1px solid #e1e8ed;margin-bottom:1.2em;font-size:1em;">
+                <option value="Suggestion">Suggestion</option>
+                <option value="Bug">Bug</option>
+                <option value="Other">Other</option>
+            </select>
+            <label for="message">Your Message</label>
+            <textarea id="message" name="message" maxlength="1000" placeholder="Describe your suggestion or the issue you encountered..." required></textarea>
+            <label for="email">Email (optional)</label>
+            <input type="email" id="email" name="email" maxlength="100" placeholder="you@example.com">
+            <button class="btn" type="submit"><i class="fas fa-paper-plane"></i> Submit Feedback</button>
+        </form>
+        <div id="feedbackStatus"></div>
+    </div>
+    <script>
+    document.getElementById('feedbackForm').onsubmit = function(e) {
+    e.preventDefault();
+    const type = document.getElementById('type').value;
+    const message = document.getElementById('message').value;
+    const email = document.getElementById('email').value;
+    const status = document.getElementById('feedbackStatus');
+    status.innerHTML = '';
+    // Construction du mailto dynamique
+    let subject = encodeURIComponent('[AutoRaider Feedback] ' + type);
+    let body = encodeURIComponent('Type: ' + type + '\nMessage:\n' + message + (email ? ('\n\nUser email: ' + email) : ''));
+    let mailto = `mailto:support@watchpick.fr?subject=${subject}&body=${body}`;
+    // Ouvre le client mail par défaut
+    window.location.href = mailto;
+    status.innerHTML = '<div class="success"><i class="fas fa-check-circle"></i> Your email client should open. If not, please send your feedback to <b>support@watchpick.fr</b>.</div>';
+    document.getElementById('feedbackForm').reset();
+    return false;
+}
+</script>
+<!-- Contacts Section -->
+<div class="login-contacts" style="margin:36px auto 0 auto; max-width:420px; background:#f7f9fa; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.04); padding:18px 18px 12px 18px; text-align:center; font-size:1.08em;">
+    <div style="margin-bottom:8px; color:#1da1f2; font-weight:bold;"><i class="fas fa-address-book"></i> Contact & Support</div>
+    <div style="margin-bottom:6px;"><i class="fab fa-telegram" style="color:#229ed9;"></i> Telegram: <a href="https://t.me/psyk0t" target="_blank" style="color:#229ed9;">@psyk0t</a></div>
+    <div style="margin-bottom:6px;"><i class="fab fa-x-twitter" style="color:#222;"></i> X (ex-Twitter): <a href="https://x.com/psyk0t" target="_blank" style="color:#222;">@psyk0t</a></div>
+    <div style="margin-bottom:4px;"><i class="fas fa-envelope" style="color:#e84393;"></i> Email: <a href="mailto:support@watchpick.fr" style="color:#e84393;">support@watchpick.fr</a></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "today": {
+    "likes": 42,
+    "retweets": 18,
+    "replies": 208,
+    "total": 268
+  },
+  "thisHour": {
+    "likes": 42,
+    "retweets": 18,
+    "replies": 208,
+    "total": 268
+  },
+  "allTime": {
+    "likes": 200,
+    "retweets": 58,
+    "replies": 507,
+    "total": 765
+  },
+  "lastUpdate": "2025-08-22T16:12:50.765Z",
+  "lastHourUpdate": null,
+  "currentDate": "2025-08-22",
+  "currentHour": 18
+}

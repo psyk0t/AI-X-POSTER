@@ -1,0 +1,38 @@
+{
+  "actions": {
+    "likes": {
+      "total": 0,
+      "today": 0,
+      "thisHour": 0
+    },
+    "retweets": {
+      "total": 0,
+      "today": 0,
+      "thisHour": 0
+    },
+    "comments": {
+      "total": 0,
+      "today": 0,
+      "thisHour": 0
+    },
+    "total": {
+      "total": 0,
+      "today": 0,
+      "thisHour": 0
+    }
+  },
+  "accounts": {},
+  "hourly": {},
+  "daily": {},
+  "performance": {
+    "successRate": 0,
+    "averageResponseTime": 0,
+    "errorCount": 0,
+    "apiCalls": 0
+  },
+  "quotas": {
+    "usage": {},
+    "limits": {},
+    "efficiency": 0
+  }
+}

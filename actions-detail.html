@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détail des Actions - X-AutoRaider</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1da1f2;
+            --primary-dark: #1991db;
+            --secondary-color: #14171a;
+            --success-color: #17bf63;
+            --warning-color: #ffad1f;
+            --danger-color: #e0245e;
+            --light-gray: #f7f9fa;
+            --medium-gray: #657786;
+            --dark-gray: #14171a;
+            --white: #ffffff;
+            --border-color: #e1e8ed;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark-gray);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--primary-color);
+            color: var(--white);
+            padding: 20px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .close-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: var(--white);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .stats-summary {
+            padding: 20px 30px;
+            background: var(--light-gray);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: var(--white);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            color: var(--medium-gray);
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .actions-list {
+            padding: 30px;
+        }
+
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--light-gray);
+            border-radius: 8px;
+        }
+
+        .filter-bar select, .filter-bar input {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .action-item {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .action-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .meta-line {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tweet-link, .profile-link {
+            color: #1da1f2;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .tweet-link:hover, .profile-link:hover {
+            color: #0d8bd9;
+            text-decoration: underline;
+        }
+
+        .date-info {
+            color: #657786;
+            font-size: 0.9em;
+            cursor: help;
+        }
+
+        .action-links {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .action-link {
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 80px;
+            justify-content: center;
+        }
+
+        .tweet-btn {
+            background: #1da1f2;
+            color: white;
+        }
+
+        .tweet-btn:hover {
+            background: #0d8bd9;
+            transform: scale(1.05);
+        }
+
+        .profile-btn {
+            background: #657786;
+            color: white;
+        }
+
+        .profile-btn:hover {
+            background: #536471;
+            transform: scale(1.05);
+        }
+
+        .action-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.2rem;
+            color: var(--white);
+        }
+
+        .action-icon.like { background: var(--danger-color); }
+        .action-icon.retweet { background: var(--success-color); }
+        .action-icon.reply { background: var(--warning-color); }
+
+        .action-details {
+            flex: 1;
+        }
+
+        .action-type {
+            font-weight: 600;
+            color: var(--dark-gray);
+            margin-bottom: 5px;
+        }
+
+        .action-meta {
+            color: var(--medium-gray);
+            font-size: 0.9rem;
+        }
+
+        .action-link {
+            background: var(--primary-color);
+            color: var(--white);
+            padding: 8px 15px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .action-link:hover {
+            background: var(--primary-dark);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--medium-gray);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--medium-gray);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <i class="fas fa-chart-line"></i>
+                <span id="pageTitle">Détail des Actions</span>
+            </h1>
+            <button class="close-btn" onclick="window.close()">
+                <i class="fas fa-times"></i> Fermer
+            </button>
+        </div>
+
+        <div class="stats-summary">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalCount">0</div>
+                    <div class="stat-label">Actions trouvées</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="likesCount">0</div>
+                    <div class="stat-label">❤️ Likes</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="retweetsCount">0</div>
+                    <div class="stat-label">🔄 Retweets</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="repliesCount">0</div>
+                    <div class="stat-label">💬 Replies</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions-list">
+            <div class="filter-bar">
+                <label>
+                    <i class="fas fa-filter"></i> Filtrer par type :
+                    <select id="typeFilter">
+                        <option value="all">Toutes les actions</option>
+                        <option value="like">Likes seulement</option>
+                        <option value="retweet">Retweets seulement</option>
+                        <option value="reply">Replies seulement</option>
+                    </select>
+                </label>
+                <label>
+                    <i class="fas fa-search"></i> Rechercher :
+                    <input type="text" id="searchInput" placeholder="ID Tweet, compte...">
+                </label>
+            </div>
+
+            <div id="loadingState" class="loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Chargement des actions...</p>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <i class="fas fa-inbox"></i>
+                <h3>Aucune action trouvée</h3>
+                <p>Il n'y a pas encore d'actions enregistrées pour ce type.</p>
+            </div>
+
+            <div id="actionsContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3005';
+        let allActions = [];
+        let filteredActions = [];
+
+        // Récupérer le type depuis l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const actionType = urlParams.get('type') || 'all';
+
+        // Mettre à jour le titre
+        const titles = {
+            'like': '❤️ Détail des Likes',
+            'retweet': '🔄 Détail des Retweets', 
+            'reply': '💬 Détail des Replies',
+            'all': '📊 Toutes les Actions'
+        };
+        document.getElementById('pageTitle').textContent = titles[actionType] || titles['all'];
+        document.getElementById('typeFilter').value = actionType;
+
+        // Fonctions utilitaires
+        function getActionIcon(type) {
+            const icons = {
+                'like': 'fas fa-heart',
+                'retweet': 'fas fa-retweet',
+                'reply': 'fas fa-reply'
+            };
+            return icons[type] || 'fas fa-star';
+        }
+
+        function getActionLabel(type) {
+            const labels = {
+                'like': 'Like',
+                'retweet': 'Retweet',
+                'reply': 'Reply'
+            };
+            return labels[type] || type;
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function maskAccountId(accountId) {
+            if (accountId.length <= 8) return accountId;
+            return accountId.substring(0, 4) + '***' + accountId.substring(accountId.length - 4);
+        }
+
+        function getRelativeTime(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMinutes = Math.floor(diffMs / (1000 * 60));
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+            if (diffMinutes < 1) {
+                return 'À l\'instant';
+            } else if (diffMinutes < 60) {
+                return `Il y a ${diffMinutes} min`;
+            } else if (diffHours < 24) {
+                return `Il y a ${diffHours}h`;
+            } else if (diffDays < 7) {
+                return `Il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+            } else {
+                return date.toLocaleDateString('fr-FR');
+            }
+        }
+
+        // Charger les données
+        async function loadActions() {
+            try {
+                document.getElementById('loadingState').style.display = 'block';
+                document.getElementById('emptyState').style.display = 'none';
+
+                const response = await fetch(`${API_BASE_URL}/api/actions-history?type=${actionType}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    allActions = data.actions;
+                    updateStats(data);
+                    filterAndDisplayActions();
+                } else {
+                    throw new Error(data.error || 'Erreur lors du chargement');
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                document.getElementById('loadingState').innerHTML = `
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Erreur lors du chargement : ${error.message}</p>
+                `;
+            }
+        }
+
+        function updateStats(data) {
+            document.getElementById('totalCount').textContent = data.count;
+            
+            // Compter par type
+            const counts = { like: 0, retweet: 0, reply: 0 };
+            data.actions.forEach(action => {
+                counts[action.actionType] = (counts[action.actionType] || 0) + 1;
+            });
+            
+            document.getElementById('likesCount').textContent = counts.like;
+            document.getElementById('retweetsCount').textContent = counts.retweet;
+            document.getElementById('repliesCount').textContent = counts.reply;
+        }
+
+        function filterAndDisplayActions() {
+            const typeFilter = document.getElementById('typeFilter').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            filteredActions = allActions.filter(action => {
+                const matchesType = typeFilter === 'all' || action.actionType === typeFilter;
+                const matchesSearch = !searchTerm || 
+                    action.tweetId.toLowerCase().includes(searchTerm) ||
+                    action.accountId.toLowerCase().includes(searchTerm);
+                
+                return matchesType && matchesSearch;
+            });
+
+            displayActions();
+        }
+
+        function displayActions() {
+            const container = document.getElementById('actionsContainer');
+            document.getElementById('loadingState').style.display = 'none';
+
+            if (filteredActions.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                container.innerHTML = '';
+                return;
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+            
+            container.innerHTML = filteredActions.map(action => {
+                // Utiliser le timestamp ISO pour un formatage précis
+                const actionDate = new Date(action.timestamp);
+                const formattedDate = actionDate.toLocaleString('fr-FR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                const relativeTime = getRelativeTime(actionDate);
+                
+                return `
+                <div class="action-item">
+                    <div class="action-icon ${action.actionType}">
+                        <i class="${getActionIcon(action.actionType)}"></i>
+                    </div>
+                    <div class="action-details">
+                        <div class="action-type">${getActionLabel(action.actionType)}</div>
+                        <div class="action-meta">
+                            <div class="meta-line">
+                                <strong>Tweet:</strong> 
+                                <a href="${action.twitterUrl}" target="_blank" class="tweet-link">
+                                    <i class="fab fa-twitter"></i> ${action.tweetId}
+                                </a>
+                            </div>
+                            <div class="meta-line">
+                                <strong>Compte:</strong> 
+                                <a href="${action.profileUrl || `https://twitter.com/intent/user?user_id=${action.accountId}`}" target="_blank" class="profile-link">
+                                    <i class="fas fa-user"></i> ${maskAccountId(action.accountId)}
+                                </a>
+                            </div>
+                            <div class="meta-line">
+                                <strong>Date:</strong> 
+                                <span class="date-info" title="${formattedDate}">
+                                    <i class="fas fa-clock"></i> ${relativeTime}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="action-links">
+                        <a href="${action.twitterUrl}" target="_blank" class="action-link tweet-btn">
+                            <i class="fab fa-twitter"></i> Tweet
+                        </a>
+                        <a href="${action.profileUrl || `https://twitter.com/intent/user?user_id=${action.accountId}`}" target="_blank" class="action-link profile-btn">
+                            <i class="fas fa-user"></i> Profil
+                        </a>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        // Event listeners
+        document.getElementById('typeFilter').addEventListener('change', filterAndDisplayActions);
+        document.getElementById('searchInput').addEventListener('input', filterAndDisplayActions);
+
+        // Initialisation
+        loadActions();
+    </script>
+</body>
+</html>

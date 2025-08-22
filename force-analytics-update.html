@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Force Analytics Update</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .button { background: #4CAF50; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 10px; }
+        .button:hover { background: #45a049; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Force Analytics Update</h1>
+        <p>Cette page va forcer la mise à jour des données analytics dans le dashboard principal.</p>
+        
+        <button class="button" onclick="testAnalyticsAPI()">🔍 Tester API Analytics</button>
+        <button class="button" onclick="forceUpdateMainDashboard()">⚡ Forcer Mise à Jour Dashboard</button>
+        <button class="button" onclick="openMainDashboard()">🌐 Ouvrir Dashboard Principal</button>
+        
+        <div id="result"></div>
+        
+        <h2>📊 Données Analytics Actuelles</h2>
+        <div id="currentData">Chargement...</div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3005';
+        
+        async function testAnalyticsAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="info">🔄 Test de l\'API analytics en cours...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/analytics/dashboard`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ <strong>API Analytics Fonctionnelle!</strong><br>
+                            📊 Likes: ${data.metrics.summary.likes.total}<br>
+                            🔄 Retweets: ${data.metrics.summary.retweets.total}<br>
+                            💬 Comments: ${data.metrics.summary.comments.total}<br>
+                            📈 Total: ${data.metrics.summary.total.total}<br>
+                            👥 Comptes actifs: ${data.metrics.summary.activeAccounts}<br>
+                            ✅ Taux de succès: ${Math.round(data.metrics.performance.successRate * 100)}%
+                        </div>
+                    `;
+                    updateCurrentData(data.metrics);
+                } else {
+                    throw new Error('Données invalides');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+        
+        function updateCurrentData(metrics) {
+            const dataDiv = document.getElementById('currentData');
+            dataDiv.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 8px;">
+                        <h3>❤️ Likes</h3>
+                        <div style="font-size: 24px; font-weight: bold;">${metrics.summary.likes.total}</div>
+                    </div>
+                    <div style="background: #e8f5e8; padding: 15px; border-radius: 8px;">
+                        <h3>🔄 Retweets</h3>
+                        <div style="font-size: 24px; font-weight: bold;">${metrics.summary.retweets.total}</div>
+                    </div>
+                    <div style="background: #fff3e0; padding: 15px; border-radius: 8px;">
+                        <h3>💬 Comments</h3>
+                        <div style="font-size: 24px; font-weight: bold;">${metrics.summary.comments.total}</div>
+                    </div>
+                    <div style="background: #f3e5f5; padding: 15px; border-radius: 8px;">
+                        <h3>📊 Total</h3>
+                        <div style="font-size: 24px; font-weight: bold;">${metrics.summary.total.total}</div>
+                    </div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <h3>🏆 Top Comptes</h3>
+                    ${metrics.topAccounts.map(account => 
+                        `<div style="background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 5px;">
+                            <strong>${account.accountId}</strong>: ${account.totalActions} actions (${Math.round(account.successRate)}% succès)
+                        </div>`
+                    ).join('')}
+                </div>
+            `;
+        }
+        
+        async function forceUpdateMainDashboard() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="info">⚡ Injection du code de mise à jour dans le dashboard principal...</div>';
+            
+            try {
+                // Ouvrir le dashboard principal dans une nouvelle fenêtre
+                const mainWindow = window.open('http://localhost:3005', 'mainDashboard');
+                
+                // Attendre que la page se charge
+                setTimeout(() => {
+                    try {
+                        // Injecter le code de mise à jour directement
+                        const script = mainWindow.document.createElement('script');
+                        script.textContent = `
+                            console.log('🚀 INJECTION FORCÉE - Mise à jour analytics');
+                            
+                            async function injectAnalyticsUpdate() {
+                                try {
+                                    const response = await fetch('${API_BASE_URL}/api/analytics/dashboard');
+                                    const data = await response.json();
+                                    
+                                    if (data.success && data.metrics) {
+                                        // Mise à jour forcée des éléments
+                                        const updates = [
+                                            { id: 'analyticsLikesCount', value: data.metrics.summary.likes.total },
+                                            { id: 'analyticsRetweetsCount', value: data.metrics.summary.retweets.total },
+                                            { id: 'analyticsCommentsCount', value: data.metrics.summary.comments.total },
+                                            { id: 'analyticsTotalCount', value: data.metrics.summary.total.total },
+                                            { id: 'analyticsSuccessRate', value: Math.round(data.metrics.performance.successRate * 100) + '%' },
+                                            { id: 'analyticsResponseTime', value: Math.round(data.metrics.performance.averageResponseTime) + 'ms' },
+                                            { id: 'analyticsErrorCount', value: data.metrics.performance.errorCount },
+                                            { id: 'analyticsActiveAccounts', value: data.metrics.summary.activeAccounts },
+                                            { id: 'analyticsQuotaEfficiency', value: Math.round(data.metrics.quotaEfficiency) + '%' }
+                                        ];
+                                        
+                                        let successCount = 0;
+                                        updates.forEach(update => {
+                                            const element = document.getElementById(update.id);
+                                            if (element) {
+                                                element.textContent = update.value;
+                                                element.style.background = '#90EE90';
+                                                element.style.transition = 'background 2s';
+                                                setTimeout(() => element.style.background = '', 2000);
+                                                console.log('✅ Mis à jour:', update.id, '=', update.value);
+                                                successCount++;
+                                            }
+                                        });
+                                        
+                                        // Mise à jour de l'heure
+                                        const lastUpdateEl = document.getElementById('analyticsLastUpdate');
+                                        if (lastUpdateEl) {
+                                            lastUpdateEl.textContent = new Date().toLocaleTimeString('fr-FR');
+                                        }
+                                        
+                                        // Notification de succès
+                                        const notification = document.createElement('div');
+                                        notification.style.cssText = 'position:fixed;top:20px;right:20px;background:#4CAF50;color:white;padding:20px;border-radius:10px;z-index:9999;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+                                        notification.innerHTML = '🎉 ANALYTICS FORCÉ! ' + successCount + ' éléments mis à jour';
+                                        document.body.appendChild(notification);
+                                        setTimeout(() => notification.remove(), 5000);
+                                        
+                                        console.log('🎉 SUCCÈS! Analytics forcé:', successCount, 'éléments mis à jour');
+                                    }
+                                } catch (error) {
+                                    console.error('❌ Erreur injection:', error);
+                                }
+                            }
+                            
+                            // Exécution immédiate
+                            injectAnalyticsUpdate();
+                            
+                            // Répétition toutes les 10 secondes
+                            setInterval(injectAnalyticsUpdate, 10000);
+                        `;
+                        mainWindow.document.head.appendChild(script);
+                        
+                        resultDiv.innerHTML = '<div class="success">✅ Code injecté avec succès! Vérifiez le dashboard principal.</div>';
+                    } catch (error) {
+                        resultDiv.innerHTML = `<div class="error">❌ Erreur d'injection: ${error.message}</div>`;
+                    }
+                }, 3000);
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+        
+        function openMainDashboard() {
+            window.open('http://localhost:3005', '_blank');
+        }
+        
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            setTimeout(testAnalyticsAPI, 1000);
+        });
+    </script>
+</body>
+</html>

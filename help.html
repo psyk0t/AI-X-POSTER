@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help & Documentation - X-AutoRaider</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 80px 20px 20px 20px;
+            line-height: 1.6;
+        }
+        
+        
+        .container { 
+            max-width: 1000px; 
+            margin: 40px auto; 
+            background: #fff; 
+            border-radius: 18px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12); 
+            padding: 3rem 2.5rem; 
+        }
+        
+        h1, h2, h3 { color: #1da1f2; }
+        h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+        h2 { font-size: 1.8rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 2px solid #e1e8ed; padding-bottom: 0.5rem; }
+        h3 { font-size: 1.3rem; margin-top: 1.5rem; color: #1991db; }
+        
+        .toc { 
+            background: #f8fafc; 
+            border-radius: 12px; 
+            padding: 1.5rem; 
+            margin-bottom: 2rem; 
+            border-left: 4px solid #1da1f2;
+        }
+        .toc ul { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.5rem; }
+        .toc li { margin: 0.3em 0; }
+        .toc a { color: #1991db; text-decoration: none; font-weight: 500; transition: color 0.2s; }
+        .warning a:hover { color: #d97706; }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 70px 10px 10px 10px;
+            }
+            
+            .container {
+                margin: 20px auto;
+                padding: 1.5rem 1rem;
+                border-radius: 12px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            h2 {
+                font-size: 1.5rem;
+            }
+            
+            h3 {
+                font-size: 1.2rem;
+            }
+            
+            .toc ul {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 60px 5px 5px 5px;
+            }
+            
+            .container {
+                margin: 10px auto;
+                padding: 1rem 0.8rem;
+                max-width: 95%;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            h2 {
+                font-size: 1.3rem;
+            }
+            
+            h3 {
+                font-size: 1.1rem;
+            }
+            
+            .subsection {
+                margin-left: 0.5rem;
+            }
+        }
+        
+        @media (max-width: 320px) {
+            .container {
+                padding: 0.8rem 0.6rem;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+        
+        .section { margin-bottom: 3rem; }
+        .subsection { margin-left: 1rem; margin-bottom: 1.5rem; }
+        
+        .tip { 
+            background: linear-gradient(135deg, #eaf6fd 0%, #f0f9ff 100%); 
+            border-left: 5px solid #1da1f2; 
+            padding: 1rem 1.5rem; 
+            border-radius: 8px; 
+            margin: 1.5rem 0; 
+            box-shadow: 0 2px 8px rgba(29, 161, 242, 0.1);
+        }
+        
+        .warning { 
+            background: linear-gradient(135deg, #fff3cd 0%, #fef7e0 100%); 
+            border-left: 5px solid #ffad1f; 
+            padding: 1rem 1.5rem; 
+            border-radius: 8px; 
+            margin: 1.5rem 0; 
+            box-shadow: 0 2px 8px rgba(255, 173, 31, 0.1);
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        
+        .feature-card {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 1.5rem;
+            border-left: 4px solid #1da1f2;
+            transition: transform 0.2s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .icon { color: #1da1f2; margin-right: 0.6em; font-size: 1.2em; }
+        .code { background: #f1f5f9; padding: 0.2em 0.5em; border-radius: 4px; font-family: 'Courier New', monospace; }
+        
+        ul, ol { margin: 1rem 0; }
+        li { margin: 0.5rem 0; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #1da1f2 0%, #1991db 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(29, 161, 242, 0.3);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            display: block;
+        }
+        
+        .feedback-link { 
+            display: inline-block; 
+            margin-top: 1.5em; 
+            background: linear-gradient(135deg, #1da1f2 0%, #1991db 100%); 
+            color: #fff; 
+            padding: 0.8em 2em; 
+            border-radius: 25px; 
+            text-decoration: none; 
+            font-weight: 600; 
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(29, 161, 242, 0.3);
+        }
+        .feedback-link:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(29, 161, 242, 0.4);
+        }
+    </style>
+    <script src="components/navbar.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-rocket icon"></i> X-AutoRaider Complete Documentation</h1>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-number">1000</span>
+                Premium Actions Pack
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">200</span>
+                Daily Actions Limit
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">Multi</span>
+                Account Support
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">AI</span>
+                Powered Replies
+            </div>
+        </div>
+
+        <div class="toc">
+            <h2><i class="fas fa-list icon"></i> Table of Contents</h2>
+            <ul>
+                <li><a href="#overview">Platform Overview</a></li>
+                <li><a href="#dashboard">Dashboard Control Center</a></li>
+                <li><a href="#quota-system">Intelligent Quota System</a></li>
+                <li><a href="#automation">Advanced Automation</a></li>
+                <li><a href="#ai-system">AI Content Generation</a></li>
+                <li><a href="#account-management">Account Management</a></li>
+                <li><a href="#invitations">Invitation System</a></li>
+                <li><a href="#monitoring">Monitoring & Security</a></li>
+                <li><a href="#analytics">Analytics & Statistics</a></li>
+                <li><a href="#configuration">Advanced Configuration</a></li>
+                <li><a href="#troubleshooting">Troubleshooting</a></li>
+                <li><a href="#support">Support & Contact</a></li>
+            </ul>
+        </div>
+
+        <div id="overview" class="section">
+            <h2><i class="fas fa-eye icon"></i> Platform Overview</h2>
+            <p>X-AutoRaider is a sophisticated automation platform designed to manage multiple X (Twitter) accounts with intelligent quota distribution, AI-powered content generation, and advanced security features.</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3><i class="fas fa-robot icon"></i> Smart Automation</h3>
+                    <p>Automated likes, retweets, and replies with intelligent rate limiting and error handling.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><i class="fas fa-chart-pie icon"></i> Quota Management</h3>
+                    <p>Dynamic quota distribution across accounts with real-time recalculation and optimization.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><i class="fas fa-brain icon"></i> AI Integration</h3>
+                    <p>AI-powered reply generation with customizable tone and context awareness.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><i class="fas fa-shield-alt icon"></i> Security First</h3>
+                    <p>OAuth 2.0 authentication, shadowban detection, and automatic account protection.</p>
+                </div>
+            </div>
+
+            <div class="tip">
+                <strong>Getting Started:</strong> Use a modern browser (Chrome, Edge, Firefox) for the best experience. The platform is optimized for desktop and mobile devices.
+            </div>
+        </div>
+
+        <div id="dashboard" class="section">
+            <h2><i class="fas fa-tachometer-alt icon"></i> Dashboard Control Center</h2>
+            
+            <h3>Real-Time Monitoring</h3>
+            <p>The dashboard provides comprehensive real-time monitoring of all automation activities:</p>
+            
+            <div class="subsection">
+                <h4><i class="fas fa-chart-line icon"></i> Live Statistics</h4>
+                <ul>
+                    <li><strong>Actions Remaining:</strong> Real-time counter showing available likes, retweets, and replies</li>
+                    <li><strong>Daily Usage:</strong> Progress bars displaying quota consumption across all accounts</li>
+                    <li><strong>Account Status:</strong> Live status indicators (Active, Paused, Muted, Error)</li>
+                    <li><strong>Performance Metrics:</strong> Success rates, error counts, and efficiency scores</li>
+                </ul>
+            </div>
+
+            <div class="subsection">
+                <h4><i class="fas fa-stream icon"></i> Activity Feed</h4>
+                <ul>
+                    <li><strong>Live Action Log:</strong> Real-time stream of all automated actions</li>
+                    <li><strong>Error Notifications:</strong> Immediate alerts for rate limits, API errors, or account issues</li>
+                    <li><strong>Success Confirmations:</strong> Visual feedback for completed actions</li>
+                    <li><strong>System Messages:</strong> Important notifications about quota updates and system status</li>
+                </ul>
+            </div>
+
+            <div class="subsection">
+                <h4><i class="fas fa-palette icon"></i> Interface Features</h4>
+                <ul>
+                    <li><strong>Dark/Light Themes:</strong> Toggle between themes for comfortable viewing</li>
+                    <li><strong>Responsive Design:</strong> Optimized for desktop, tablet, and mobile devices</li>
+                    <li><strong>Interactive Widgets:</strong> Hover effects and tooltips for detailed information</li>
+                    <li><strong>Navigation Menu:</strong> Consistent header navigation across all pages</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="quota-system" class="section">
+            <h2><i class="fas fa-balance-scale icon"></i> Intelligent Quota System</h2>
+            
+            <h3>Global Pack Management</h3>
+            <div class="feature-card">
+                <h4><i class="fas fa-package icon"></i> Premium Pack (1000 Actions)</h4>
+                <p>Your premium pack includes 1000 total actions distributed intelligently across all connected accounts.</p>
+                <ul>
+                    <li><strong>Total Actions:</strong> 1000 actions per pack</li>
+                    <li><strong>Daily Limit:</strong> Maximum 200 actions per day</li>
+                    <li><strong>Pack Type:</strong> Premium with advanced features</li>
+                    <li><strong>Expiry:</strong> No expiration date (lifetime pack)</li>
+                </ul>
+            </div>
+
+            <h3>Dynamic Distribution</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-chart-pie icon"></i> Action Probabilities</h4>
+                <ul>
+                    <li><strong>Likes:</strong> 50% of daily quota (most common action)</li>
+                    <li><strong>Replies:</strong> 40% of daily quota (AI-generated responses)</li>
+                    <li><strong>Retweets:</strong> 10% of daily quota (selective sharing)</li>
+                </ul>
+            </div>
+
+            <div class="subsection">
+                <h4><i class="fas fa-sync-alt icon"></i> Automatic Recalculation</h4>
+                <p>The system automatically recalculates quotas when:</p>
+                <ul>
+                    <li>New accounts are added via OAuth2</li>
+                    <li>Accounts are removed or become inactive</li>
+                    <li>Daily reset occurs (midnight UTC)</li>
+                    <li>Manual quota adjustments are made</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <strong>Important:</strong> When adding new OAuth2 accounts, automation automatically stops and displays: "Account X added, please restart automation" to ensure proper quota redistribution.
+            </div>
+        </div>
+
+        <div id="automation" class="section">
+            <h2><i class="fas fa-cogs icon"></i> Advanced Automation</h2>
+            
+            <h3>Intelligent Tweet Scanning</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-search icon"></i> Target Detection</h4>
+                <ul>
+                    <li><strong>Watchlist Monitoring:</strong> Continuous scanning of specified accounts</li>
+                    <li><strong>Real-time Processing:</strong> Immediate action on new tweets</li>
+                    <li><strong>Content Analysis:</strong> AI-powered relevance scoring</li>
+                    <li><strong>Duplicate Prevention:</strong> Automatic detection of already-processed tweets</li>
+                </ul>
+            </div>
+
+            <h3>Smart Error Handling</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-exclamation-triangle icon"></i> Rate Limit Management</h4>
+                <ul>
+                    <li><strong>429 Error Handling:</strong> Exponential backoff starting at 15 minutes</li>
+                    <li><strong>403 Error Recovery:</strong> 15-minute pause with automatic retry</li>
+                    <li><strong>Automatic Unmuting:</strong> Expired muted accounts are automatically reactivated</li>
+                    <li><strong>Progressive Delays:</strong> Increasing pause duration for repeated errors</li>
+                </ul>
+            </div>
+
+            <div class="subsection">
+                <h4><i class="fas fa-shield-alt icon"></i> Account Protection</h4>
+                <ul>
+                    <li><strong>Shadowban Detection:</strong> Automatic identification of restricted accounts</li>
+                    <li><strong>Temporary Pausing:</strong> Protective measures for flagged accounts</li>
+                    <li><strong>Recovery Monitoring:</strong> Automatic reactivation after cooldown periods</li>
+                    <li><strong>Performance Tracking:</strong> Success rate monitoring per account</li>
+                </ul>
+            </div>
+
+            <div class="tip">
+                <strong>Pro Tip:</strong> The system learns from each account's behavior patterns and adjusts automation timing to maximize success rates while minimizing detection risk.
+            </div>
+        </div>
+
+        <div id="ai-system" class="section">
+            <h2><i class="fas fa-brain icon"></i> AI Content Generation</h2>
+            
+            <h3>AI Alpha Token Settings</h3>
+            <div class="feature-card">
+                <h4><i class="fas fa-key icon"></i> Token Configuration</h4>
+                <p>Advanced AI integration through configurable token settings for natural reply generation.</p>
+                <ul>
+                    <li><strong>Multiple Providers:</strong> Support for various AI services</li>
+                    <li><strong>Custom Prompts:</strong> Tailored response generation</li>
+                    <li><strong>Context Awareness:</strong> Tweet content analysis for relevant replies</li>
+                    <li><strong>Tone Customization:</strong> Adjustable personality and style</li>
+                </ul>
+            </div>
+
+            <h3>Reply Generation Process</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-magic icon"></i> Intelligent Response Creation</h4>
+                <ol>
+                    <li><strong>Content Analysis:</strong> AI analyzes tweet content, context, and sentiment</li>
+                    <li><strong>Response Generation:</strong> Creates contextually appropriate replies</li>
+                    <li><strong>Quality Check:</strong> Validates response quality and relevance</li>
+                    <li><strong>Posting:</strong> Automatically posts using selected account</li>
+                </ol>
+            </div>
+
+            <div class="warning">
+                <strong>Configuration Required:</strong> AI features require proper token configuration in the admin panel. Contact support for setup assistance.
+            </div>
+        </div>
+
+        <div id="account-management" class="section">
+            <h2><i class="fas fa-users icon"></i> Account Management</h2>
+            
+            <h3>OAuth2 Integration</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-lock icon"></i> Secure Authentication</h4>
+                <ul>
+                    <li><strong>OAuth 2.0 Standard:</strong> Industry-standard secure authentication</li>
+                    <li><strong>No Password Storage:</strong> Credentials never stored locally</li>
+                    <li><strong>Token Management:</strong> Automatic refresh and renewal</li>
+                    <li><strong>Hybrid Support:</strong> Both OAuth 1.0a and 2.0 compatibility</li>
+                </ul>
+            </div>
+
+            <h3>Multi-Account Operations</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-network-wired icon"></i> Simultaneous Management</h4>
+                <ul>
+                    <li><strong>Unlimited Accounts:</strong> Connect multiple X accounts</li>
+                    <li><strong>Individual Quotas:</strong> Per-account quota allocation</li>
+                    <li><strong>Status Monitoring:</strong> Real-time status for each account</li>
+                    <li><strong>Performance Tracking:</strong> Individual account statistics</li>
+                </ul>
+            </div>
+
+            <div class="tip">
+                <strong>Account Safety:</strong> All connections use official X (Twitter) OAuth. You can revoke access anytime through your X account settings.
+            </div>
+        </div>
+
+        <div id="invitations" class="section">
+            <h2><i class="fas fa-envelope icon"></i> Invitation System</h2>
+            
+            <h3>Secure Onboarding</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-link icon"></i> Invitation Generation</h4>
+                <ul>
+                    <li><strong>Unique Tokens:</strong> Cryptographically secure invitation links</li>
+                    <li><strong>Expiration Control:</strong> Time-limited access for security</li>
+                    <li><strong>Project Association:</strong> Automatic assignment to correct projects</li>
+                    <li><strong>Usage Tracking:</strong> Monitor invitation usage and success rates</li>
+                </ul>
+            </div>
+
+            <h3>User Onboarding Flow</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-route icon"></i> Guided Setup Process</h4>
+                <ol>
+                    <li><strong>Invitation Click:</strong> User receives and clicks secure invitation link</li>
+                    <li><strong>OAuth Authorization:</strong> Guided through X (Twitter) authentication</li>
+                    <li><strong>Account Integration:</strong> Automatic addition to quota system</li>
+                    <li><strong>Dashboard Access:</strong> Immediate access to control panel</li>
+                </ol>
+            </div>
+        </div>
+
+        <div id="monitoring" class="section">
+            <h2><i class="fas fa-eye icon"></i> Monitoring & Security</h2>
+            
+            <h3>Real-Time Surveillance</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-heartbeat icon"></i> System Health Monitoring</h4>
+                <ul>
+                    <li><strong>API Status:</strong> Continuous monitoring of X (Twitter) API health</li>
+                    <li><strong>Account Vitals:</strong> Real-time status of all connected accounts</li>
+                    <li><strong>Error Detection:</strong> Immediate identification of issues</li>
+                    <li><strong>Performance Metrics:</strong> Success rates and response times</li>
+                </ul>
+            </div>
+
+            <h3>Security Features</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-shield-alt icon"></i> Protection Mechanisms</h4>
+                <ul>
+                    <li><strong>Shadowban Detection:</strong> AI-powered identification of account restrictions</li>
+                    <li><strong>Rate Limit Compliance:</strong> Automatic adherence to X (Twitter) limits</li>
+                    <li><strong>Suspicious Activity Alerts:</strong> Immediate notifications of unusual patterns</li>
+                    <li><strong>Automatic Pausing:</strong> Protective account suspension when needed</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="analytics" class="section">
+            <h2><i class="fas fa-chart-bar icon"></i> Analytics & Statistics</h2>
+            
+            <h3>Performance Tracking</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-analytics icon"></i> Comprehensive Metrics</h4>
+                <ul>
+                    <li><strong>Action History:</strong> Complete log of all automated actions</li>
+                    <li><strong>Success Rates:</strong> Performance statistics per account and action type</li>
+                    <li><strong>Quota Utilization:</strong> Detailed usage patterns and optimization suggestions</li>
+                    <li><strong>Time-based Analysis:</strong> Performance trends over time</li>
+                </ul>
+            </div>
+
+            <h3>Reporting Features</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-file-alt icon"></i> Data Export & Analysis</h4>
+                <ul>
+                    <li><strong>CSV Export:</strong> Download action history for external analysis</li>
+                    <li><strong>Visual Charts:</strong> Interactive graphs and performance indicators</li>
+                    <li><strong>Custom Periods:</strong> Flexible date range selection</li>
+                    <li><strong>Account Comparison:</strong> Side-by-side performance analysis</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="configuration" class="section">
+            <h2><i class="fas fa-sliders-h icon"></i> Advanced Configuration</h2>
+            
+            <h3>Automation Settings</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-cog icon"></i> Customizable Parameters</h4>
+                <ul>
+                    <li><strong>Action Probabilities:</strong> Adjust like/retweet/reply distribution</li>
+                    <li><strong>Timing Controls:</strong> Configure scan intervals and delays</li>
+                    <li><strong>Target Management:</strong> Add/remove accounts from watchlist</li>
+                    <li><strong>Error Thresholds:</strong> Set limits for automatic pausing</li>
+                </ul>
+            </div>
+
+            <h3>AI Configuration</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-robot icon"></i> AI Token Settings</h4>
+                <ul>
+                    <li><strong>Provider Selection:</strong> Choose from multiple AI services</li>
+                    <li><strong>Token Management:</strong> Secure storage and rotation</li>
+                    <li><strong>Prompt Customization:</strong> Tailor AI behavior and responses</li>
+                    <li><strong>Quality Controls:</strong> Set response quality thresholds</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="troubleshooting" class="section">
+            <h2><i class="fas fa-wrench icon"></i> Troubleshooting</h2>
+            
+            <h3>Common Issues</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-question-circle icon"></i> Frequently Asked Questions</h4>
+                
+                <h4>Why isn't my automation working?</h4>
+                <ul>
+                    <li>Check if automation is enabled in the dashboard</li>
+                    <li>Verify accounts are connected and active</li>
+                    <li>Ensure daily quota hasn't been exceeded</li>
+                    <li>Check for error messages in the activity log</li>
+                </ul>
+
+                <h4>Account shows as "Muted" - what does this mean?</h4>
+                <ul>
+                    <li>Account hit rate limits (429 errors) and is temporarily paused</li>
+                    <li>System automatically unmutes after 15 minutes</li>
+                    <li>Check activity log for specific error details</li>
+                    <li>Account will resume normal operation automatically</li>
+                </ul>
+
+                <h4>Why did automation stop when I added a new account?</h4>
+                <ul>
+                    <li>System automatically stops to recalculate quotas</li>
+                    <li>This ensures proper quota distribution across all accounts</li>
+                    <li>Simply restart automation to resume with updated settings</li>
+                    <li>Message will display: "Account X added, please restart automation"</li>
+                </ul>
+
+                <h4>AI replies aren't generating - what's wrong?</h4>
+                <ul>
+                    <li>Check AI token configuration in admin panel</li>
+                    <li>Verify AI service is accessible and tokens are valid</li>
+                    <li>Ensure reply probability is set above 0%</li>
+                    <li>Check for AI-specific error messages in logs</li>
+                </ul>
+            </div>
+
+            <h3>Error Codes</h3>
+            <div class="subsection">
+                <h4><i class="fas fa-code icon"></i> Understanding System Messages</h4>
+                <ul>
+                    <li><strong>403 Errors:</strong> Authorization issues - account paused for 15 minutes</li>
+                    <li><strong>429 Errors:</strong> Rate limit exceeded - exponential backoff applied</li>
+                    <li><strong>Token Expired:</strong> OAuth token needs refresh - automatic retry</li>
+                    <li><strong>Quota Exceeded:</strong> Daily or total quota reached - wait for reset</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="support" class="section">
+            <h2><i class="fas fa-life-ring icon"></i> Support & Contact</h2>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3><i class="fab fa-telegram icon"></i> Telegram</h3>
+                    <p>Direct contact: <a href="https://t.me/psyk0t" target="_blank">@psyk0t</a></p>
+                </div>
+                <div class="feature-card">
+                    <h3><i class="fab fa-x-twitter icon"></i> X (Twitter)</h3>
+                    <p>Follow us: <a href="https://x.com/psyk0t" target="_blank">@psyk0t</a></p>
+                    <p>For updates and announcements</p>
+                </div>
+                <div class="feature-card">
+                    <h3><i class="fas fa-envelope icon"></i> Email</h3>
+                    <p>Technical support: <a href="mailto:support@watchpick.fr">support@watchpick.fr</a></p>
+                    <p>Business inquiries welcome</p>
+                </div>
+                <div class="feature-card">
+                    <h3><i class="fas fa-comment icon"></i> Feedback</h3>
+                    <p><a href="feedback.html" class="feedback-link">Send Anonymous Feedback</a></p>
+                    <p>Help us improve the platform</p>
+                </div>
+            </div>
+
+            <div class="warning">
+                <strong>Disconnecting from X (Twitter):</strong> You can revoke AutoRaider's access anytime through X Settings → Security and account access → Apps and sessions → Connected apps → AutoRaider → Revoke access.
+            </div>
+        </div>
+    </div>
+<!-- Contacts Section -->
+<div class="login-contacts" style="margin:36px auto 0 auto; max-width:420px; background:#f7f9fa; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.04); padding:18px 18px 12px 18px; text-align:center; font-size:1.08em;">
+    <div style="margin-bottom:8px; color:#1da1f2; font-weight:bold;"><i class="fas fa-address-book"></i> Contact & Support</div>
+    <div style="margin-bottom:6px;"><i class="fab fa-telegram" style="color:#229ed9;"></i> Telegram: <a href="https://t.me/psyk0t" target="_blank" style="color:#229ed9;">@psyk0t</a></div>
+    <div style="margin-bottom:6px;"><i class="fab fa-x-twitter" style="color:#222;"></i> X (ex-Twitter): <a href="https://x.com/psyk0t" target="_blank" style="color:#222;">@psyk0t</a></div>
+    <div style="margin-bottom:6px;"><i class="fab fa-telegram-plane" style="color:#229ed9;"></i> TG Group: <a href="https://t.me/autoraider" target="_blank" style="color:#229ed9;">t.me/autoraider</a></div>
+    <div style="margin-bottom:4px;"><i class="fas fa-envelope" style="color:#e84393;"></i> Email: <a href="mailto:support@watchpick.fr" style="color:#e84393;">support@watchpick.fr</a></div>
+</div>
+<section style="margin:38px auto 0 auto; max-width:560px; background:#f7f9fa; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.05); padding:28px 22px 18px 22px;">
+  <h2 style="color:#1da1f2; margin-bottom:16px; text-align:center;"><i class="fas fa-unlink"></i> Disconnecting AutoRaider from X (Twitter)</h2>
+  <p style="color:#222; font-size:1.08em; margin-bottom:10px;">You can revoke AutoRaider’s access to your X (Twitter) account at any time. Here’s how:</p>
+  <ol style='margin:0.7em 0 0 1.1em; color:#222; font-size:1.04em;'>
+    <li>Open X (Twitter) and go to <b>Settings & privacy</b>.</li>
+    <li>Click <b>Security and account access</b>, then <b>Apps and sessions</b>.</li>
+    <li>Choose <b>Connected apps</b> and find <b>AutoRaider</b>.</li>
+    <li>Click <b>Revoke access</b> to disconnect.</li>
+  </ol>
+  <span style='color:#1da1f2;'>You can reconnect at any time by following your invitation link again.</span>
+</section>
+</body>
+</html>

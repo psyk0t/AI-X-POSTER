@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Analytics</title>
+</head>
+<body>
+    <h1>Test Analytics Frontend</h1>
+    
+    <!-- Éléments de test pour les analytics -->
+    <div id="analyticsLikesCount">0</div>
+    <div id="analyticsRetweetsCount">0</div>
+    <div id="analyticsCommentsCount">0</div>
+    <div id="analyticsTotalCount">0</div>
+    <div id="analyticsSuccessRate">0%</div>
+    <div id="analyticsResponseTime">0ms</div>
+    <div id="analyticsErrorCount">0</div>
+    
+    <button onclick="testAnalytics()">Test Analytics</button>
+    <div id="result"></div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3005';
+        
+        async function testAnalytics() {
+            console.log('[TEST] Début du test analytics...');
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Chargement...';
+            
+            try {
+                console.log('[TEST] Appel API:', `${API_BASE_URL}/api/analytics/dashboard`);
+                const response = await fetch(`${API_BASE_URL}/api/analytics/dashboard`);
+                console.log('[TEST] Réponse reçue:', response.status);
+                
+                const data = await response.json();
+                console.log('[TEST] Données reçues:', data);
+                
+                if (data.success && data.metrics) {
+                    console.log('[TEST] Structure des métriques:', data.metrics);
+                    
+                    // Test de mise à jour des éléments
+                    const likesEl = document.getElementById('analyticsLikesCount');
+                    const retweetsEl = document.getElementById('analyticsRetweetsCount');
+                    const commentsEl = document.getElementById('analyticsCommentsCount');
+                    const totalEl = document.getElementById('analyticsTotalCount');
+                    const successRateEl = document.getElementById('analyticsSuccessRate');
+                    const responseTimeEl = document.getElementById('analyticsResponseTime');
+                    const errorCountEl = document.getElementById('analyticsErrorCount');
+                    
+                    if (likesEl) likesEl.textContent = data.metrics.summary.likes?.total || 0;
+                    if (retweetsEl) retweetsEl.textContent = data.metrics.summary.retweets?.total || 0;
+                    if (commentsEl) commentsEl.textContent = data.metrics.summary.comments?.total || 0;
+                    if (totalEl) totalEl.textContent = data.metrics.summary.total?.total || 0;
+                    
+                    const successRate = Math.round((data.metrics.performance.successRate || 0) * 100);
+                    if (successRateEl) successRateEl.textContent = `${successRate}%`;
+                    
+                    const responseTime = Math.round(data.metrics.performance.averageResponseTime || 0);
+                    if (responseTimeEl) responseTimeEl.textContent = `${responseTime}ms`;
+                    
+                    if (errorCountEl) errorCountEl.textContent = data.metrics.performance.errorCount || 0;
+                    
+                    resultDiv.innerHTML = `
+                        <div style="color: green;">
+                            ✅ Test réussi !<br>
+                            Likes: ${data.metrics.summary.likes?.total || 0}<br>
+                            Retweets: ${data.metrics.summary.retweets?.total || 0}<br>
+                            Comments: ${data.metrics.summary.comments?.total || 0}<br>
+                            Total: ${data.metrics.summary.total?.total || 0}<br>
+                            Taux succès: ${successRate}%<br>
+                            Temps réponse: ${responseTime}ms
+                        </div>
+                    `;
+                    
+                    console.log('[TEST] Mise à jour réussie !');
+                } else {
+                    throw new Error('Données invalides');
+                }
+                
+            } catch (error) {
+                console.error('[TEST] Erreur:', error);
+                resultDiv.innerHTML = `<div style="color: red;">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+        
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            console.log('[TEST] Page chargée, test automatique dans 2 secondes...');
+            setTimeout(testAnalytics, 2000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body {
+            background: #f5f8fa;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .login-container {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+            padding: 36px 30px 28px 30px;
+            width: 100%;
+            max-width: 360px;
+            margin: 36px auto 0 auto;
+        }
+        .login-container h2 {
+            margin-top: 0;
+            color: #1da1f2;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 18px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #ccd6dd;
+            font-size: 1rem;
+        }
+        .login-btn {
+            width: 100%;
+            background: #1da1f2;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .login-btn:hover {
+            background: #0d8ddb;
+        }
+        .login-error {
+            color: #e74c3c;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        /* Responsive layout */
+        @media (max-width: 900px) {
+            .login-benefits, .login-packs, .login-contacts {
+                margin-left: 8px !important;
+                margin-right: 8px !important;
+            }
+            .login-container {
+                margin-top: 24px;
+            }
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 0;
+            }
+            .login-container {
+                padding: 22px 7vw 18px 7vw;
+                max-width: 98vw;
+            }
+            .login-benefits, .login-packs, .login-contacts {
+                padding-left: 5vw !important;
+                padding-right: 5vw !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+            .login-packs > div {
+                flex-direction: column !important;
+            }
+            .login-packs .login-pack-card {
+                max-width: 100% !important;
+                min-width: 0 !important;
+                margin-bottom: 16px;
+            }
+        }
+        .login-packs > div {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+        }
+        .login-pack-card {
+            background:#f7f9fa;
+            border-radius:10px;
+            box-shadow:0 2px 8px rgba(0,0,0,0.03);
+            padding:20px 18px;
+            min-width:220px;
+            flex:1 1 220px;
+            max-width:260px;
+        }
+    </style>
+<style>
+  .feature-gallery {
+    width: 100%;
+    background: #f7f9fa;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    padding: 18px 10px 10px 10px;
+    margin-bottom: 12px;
+  }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 22px 18px;
+    justify-items: center;
+  }
+  .feature-item {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+    padding: 10px 10px 8px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 280px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .feature-item img {
+    width: 100%;
+    max-width: 260px;
+    border-radius: 8px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+    margin-bottom: 10px;
+    object-fit: cover;
+    aspect-ratio: 4/3;
+  }
+  .feature-caption {
+    text-align: center;
+    color: #1da1f2;
+    font-size: 1em;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  @media (min-width: 600px) {
+    .feature-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (min-width: 900px) {
+    .feature-grid {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="login-container">
+    <h2><i class="fas fa-user-shield"></i> Admin Login</h2>
+    <form id="loginForm">
+        <div class="input-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" autocomplete="username" required>
+        </div>
+        <div class="input-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required>
+        </div>
+        <div class="login-error" id="loginError" style="display:none;"></div>
+        <button type="submit" class="login-btn">Login</button>
+    </form>
+</div>
+<!-- Avantages produit AutoRaider -->
+<div class="login-benefits" style="margin-top:32px; background:#f7f9fa; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06); padding:22px 20px 16px 20px;">
+    <h3 style="color:#1da1f2; margin-bottom:12px; text-align:center;"><i class="fas fa-star"></i> Why choose AutoRaider?</h3>
+    <ul style="list-style:none; padding:0; margin:0; font-size:1.06em; color:#222;">
+        <li style="margin-bottom:10px;"><i class='fas fa-users' style='color:#1da1f2; margin-right:8px;'></i> <b>Uses real accounts</b>: Leverage the real X accounts of your team and your token's fans—no fake or purchased accounts!</li>
+        <li style="margin-bottom:10px;"><i class='fas fa-robot' style='color:#e84393; margin-right:8px;'></i> <b>Hybrid team</b>: You can boost your campaign with a team of bots in addition to your real members for even more power.</li>
+        <li style="margin-bottom:10px;"><i class="fas fa-shield-alt" style="color:#17bf63; margin-right:8px;"></i> <b>Shadowban Protection</b>: Smart distribution and pausing to keep your accounts safe and undetectable.</li>
+        <li style="margin-bottom:10px;"><i class="fas fa-bolt" style="color:#f39c12; margin-right:8px;"></i> <b>AutoRaid Engine</b>: Instantly organize mass likes, retweets, and comments across all your accounts.</li>
+        <li style="margin-bottom:10px;"><i class="fas fa-robot" style="color:#1da1f2; margin-right:8px;"></i> <b>AI-Powered Comments</b>: Generate natural, relevant comments using advanced AI (OpenAI integration).</li>
+        <li style="margin-bottom:10px;"><i class="fas fa-clock" style="color:#764ba2; margin-right:8px;"></i> <b>24/7 Automation</b>: Your campaigns run non-stop, even while you sleep.</li>
+        <li style="margin-bottom:10px;"><i class="fas fa-tags" style="color:#e67e22; margin-right:8px;"></i> <b>Cheaper than competitors</b>: No hidden fees, no monthly subscription. Pay only for what you use—packs available!</li>
+        <li style="margin-bottom:10px;"><i class="fas fa-users" style="color:#1da1f2; margin-right:8px;"></i> <b>Multi-account & Team Ready</b>: Manage unlimited X (Twitter) accounts, invite your team in one click.</li>
+        <li style="margin-bottom:10px;"><i class="fas fa-rocket" style="color:#e84393; margin-right:8px;"></i> <b>Lightning Fast Setup</b>: Onboard new accounts in seconds with secure invitation links.</li>
+        <li style="margin-bottom:10px;"><i class="fas fa-chart-line" style="color:#00b894; margin-right:8px;"></i> <b>Real-time Analytics</b>: Monitor all actions, quotas, and results live from your dashboard.</li>
+        <li style="margin-bottom:10px;"><i class="fas fa-lock" style="color:#636e72; margin-right:8px;"></i> <b>Privacy First</b>: No data sharing, no tracking. Your campaigns stay confidential.</li>
+        <li style="margin-bottom:10px;"><i class="fas fa-headset" style="color:#1da1f2; margin-right:8px;"></i> <b>Dedicated Support</b>: Fast help via email, always human—no bots.</li>
+    </ul>
+    <div style="margin-top:14px; text-align:center; color:#888; font-size:0.97em;">
+        <i class="fas fa-info-circle"></i> Try AutoRaider now and boost your X campaigns effortlessly!
+    </div>
+</div>
+<!-- Feature Gallery Start -->
+<div class="feature-gallery" style="margin:32px auto 18px auto; max-width:900px;">
+  <h3 style="text-align:center; color:#1da1f2; margin-bottom:18px;"><i class="fas fa-images"></i> AutoRaider Features Preview</h3>
+  <div class="feature-grid">
+    <div class="feature-item">
+      <img src="Content/Launch Automation.jpg" alt="Launch Automation" loading="lazy">
+      <div class="feature-caption">1-click Automation Launch</div>
+    </div>
+    <div class="feature-item">
+      <img src="Content/Account to Raids.jpg" alt="Account to Raids" loading="lazy">
+      <div class="feature-caption">Multi-account to Multi-Raid</div>
+    </div>
+    <div class="feature-item">
+      <img src="Content/Stats.jpg" alt="Stats" loading="lazy">
+      <div class="feature-caption">Live Statistics & Analytics</div>
+    </div>
+    <div class="feature-item">
+      <img src="Content/Token Rules.jpg" alt="Token Rules" loading="lazy">
+      <div class="feature-caption">Custom Token Rules</div>
+    </div>
+    <div class="feature-item">
+      <img src="Content/logs front.jpg" alt="Logs Front" loading="lazy">
+      <div class="feature-caption">Real-time Action Log (Frontend)</div>
+    </div>
+    <div class="feature-item">
+      <img src="Content/logs.jpg" alt="Logs" loading="lazy">
+      <div class="feature-caption">Detailed Logs (Admin)</div>
+    </div>
+  </div>
+</div>
+<!-- Feature Gallery End -->
+
+<!-- Image Zoom Modal -->
+<div id="imgZoomModal" style="display:none;position:fixed;z-index:9999;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.85);justify-content:center;align-items:center;">
+  <img id="imgZoomTarget" src="" alt="Zoom" style="max-width:98vw;max-height:96vh;box-shadow:0 4px 32px #000;border-radius:12px;">
+</div>
+<script>
+// Zoom responsive sur clic image
+const galleryImgs = document.querySelectorAll('.feature-gallery img');
+const zoomModal = document.getElementById('imgZoomModal');
+const zoomTarget = document.getElementById('imgZoomTarget');
+galleryImgs.forEach(img => {
+  img.style.cursor = 'zoom-in';
+  img.addEventListener('click', e => {
+    zoomTarget.src = img.src;
+    zoomTarget.alt = img.alt;
+    zoomModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  });
+});
+zoomModal.addEventListener('click', () => {
+  zoomModal.style.display = 'none';
+  zoomTarget.src = '';
+  document.body.style.overflow = '';
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    zoomModal.style.display = 'none';
+    zoomTarget.src = '';
+    document.body.style.overflow = '';
+  }
+});
+</script>
+
+<!-- Tariff Packs Section -->
+<div class="login-packs" style="margin-top:38px; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:28px 20px 18px 20px;">
+    <h3 style="color:#1da1f2; margin-bottom:16px; text-align:center;"><i class="fas fa-coins"></i> Choose Your Action Pack</h3>
+    <div style="display:flex; flex-wrap:wrap; gap:16px; justify-content:center;">
+        <div class="login-pack-card">
+            <h4 style="color:#1da1f2; margin-bottom:10px; text-align:center;">PACK 1000</h4>
+            <ul style="list-style:none; padding:0; color:#222; font-size:1.06em; margin-bottom:12px;">
+                <li><i class="fas fa-heart" style="color:#e74c3c;"></i> 1000 Likes</li>
+                <li><i class="fas fa-retweet" style="color:#27ae60;"></i> 1000 Retweets</li>
+                <li><i class="fas fa-comment-dots" style="color:#1da1f2;"></i> 1000 Replies</li>
+            </ul>
+            <div style="font-size:1.18em; color:#222; text-align:center; margin-bottom:8px;"><b>0.10 ETH</b></div>
+<div style="text-align:center; margin-bottom:6px;"><a href="https://t.me/psyk0t" target="_blank" style="color:#229ed9; text-decoration:none; font-size:1em;"><i class="fab fa-telegram" style="margin-right:5px;"></i>Contact TG: @psyk0t</a></div>
+        </div>
+        <div class="login-pack-card">
+            <h4 style="color:#1da1f2; margin-bottom:10px; text-align:center;">PACK 5000</h4>
+            <ul style="list-style:none; padding:0; color:#222; font-size:1.06em; margin-bottom:12px;">
+                <li><i class="fas fa-heart" style="color:#e74c3c;"></i> 5000 Likes</li>
+                <li><i class="fas fa-retweet" style="color:#27ae60;"></i> 5000 Retweets</li>
+                <li><i class="fas fa-comment-dots" style="color:#1da1f2;"></i> 5000 Replies</li>
+            </ul>
+            <div style="font-size:1.18em; color:#222; text-align:center; margin-bottom:8px;"><b>0.35 ETH</b></div>
+<div style="text-align:center; margin-bottom:6px;"><a href="https://t.me/psyk0t" target="_blank" style="color:#229ed9; text-decoration:none; font-size:1em;"><i class="fab fa-telegram" style="margin-right:5px;"></i>Contact TG: @psyk0t</a></div>
+        </div>
+        <div class="login-pack-card">
+            <h4 style="color:#1da1f2; margin-bottom:10px; text-align:center;">PACK 10000</h4>
+            <ul style="list-style:none; padding:0; color:#222; font-size:1.06em; margin-bottom:12px;">
+                <li><i class="fas fa-heart" style="color:#e74c3c;"></i> 10000 Likes</li>
+                <li><i class="fas fa-retweet" style="color:#27ae60;"></i> 10000 Retweets</li>
+                <li><i class="fas fa-comment-dots" style="color:#1da1f2;"></i> 10000 Replies</li>
+            </ul>
+            <div style="font-size:1.18em; color:#222; text-align:center; margin-bottom:8px;"><b>0.80 ETH</b></div>
+<div style="text-align:center; margin-bottom:6px;"><a href="https://t.me/psyk0t" target="_blank" style="color:#229ed9; text-decoration:none; font-size:1em;"><i class="fab fa-telegram" style="margin-right:5px;"></i>Contact TG: @psyk0t</a></div>
+        </div>
+    </div>
+    <div style="margin-top:18px; color:#444; font-size:1.04em; text-align:center;">
+        <i class="fas fa-infinity" style="color:#1da1f2;"></i> <b>Unlimited</b> target accounts<br>
+        <i class="fas fa-infinity" style="color:#1da1f2;"></i> <b>Unlimited</b> connected accounts<br>
+        <i class="fas fa-user-astronaut" style="color:#e84393;"></i> <b>Add extra bots anytime</b><br>
+        <span style="font-size:0.97em; color:#888;">The more accounts you connect or target, the faster your pack is used.<br>Contact us for custom packs or bulk pricing.</span>
+    </div>
+</div>
+<!-- Contacts Section -->
+<div class="login-contacts" style="margin:36px auto 0 auto; max-width:420px; background:#f7f9fa; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.04); padding:18px 18px 12px 18px; text-align:center; font-size:1.08em;">
+    <div style="margin-bottom:8px; color:#1da1f2; font-weight:bold;"><i class="fas fa-address-book"></i> Contact & Support</div>
+    <div style="margin-bottom:6px;"><i class="fab fa-telegram" style="color:#229ed9;"></i> Telegram: <a href="https://t.me/psyk0t" target="_blank" style="color:#229ed9;">@psyk0t</a></div>
+    <div style="margin-bottom:6px;"><i class="fab fa-x-twitter" style="color:#222;"></i> X (ex-Twitter): <a href="https://x.com/psyk0t" target="_blank" style="color:#222;">@psyk0t</a></div>
+    <div style="margin-bottom:6px;"><i class="fab fa-telegram-plane" style="color:#229ed9;"></i> TG Group: <a href="https://t.me/autoraider" target="_blank" style="color:#229ed9;">t.me/autoraider</a></div>
+    <div style="margin-bottom:4px;"><i class="fas fa-envelope" style="color:#e84393;"></i> Email: <a href="mailto:support@watchpick.fr" style="color:#e84393;">support@watchpick.fr</a></div>
+</div>
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const errorDiv = document.getElementById('loginError');
+        errorDiv.style.display = 'none';
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.href = '/';
+            } else {
+                errorDiv.textContent = data.message || 'Invalid credentials.';
+                errorDiv.style.display = 'block';
+            }
+        } catch (err) {
+            errorDiv.textContent = 'Server error.';
+            errorDiv.style.display = 'block';
+        }
+    });
+// Affiche le nom d'admin attendu sur la page de login
+const elt = document.getElementById('loginAdminName');
+fetch('/api/admin-info').then(async res => {
+    if (res.ok) {
+        const data = await res.json();
+        if (elt) elt.textContent = 'User: ' + data.username;
+    } else {
+        if (elt) elt.textContent = 'User: admin';
+    }
+}).catch(()=>{
+    if (elt) elt.textContent = 'User: admin';
+});
+</script>
+</body>
+</html>
