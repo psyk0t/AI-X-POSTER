@@ -212,3 +212,4 @@ ISC License - Voir le fichier LICENSE pour plus de détails.
 ---
 
 **⚠️ Avertissement :** Respectez les conditions d'utilisation de X (Twitter) et utilisez cette application de manière responsable.
+"# x-autoraider" 
