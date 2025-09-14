@@ -2986,8 +2986,27 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // --- Configuration Globale et Variables ---
-        const API_BASE_URL = 'http://localhost:3005';
+        // Configuration de l'API avec détection automatique d'environnement
+        function getApiBaseUrl() {
+            const hostname = window.location.hostname;
+            const protocol = window.location.protocol;
+            const port = window.location.port;
+            
+            // Détection de l'environnement
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                // Environnement local
+                return `${protocol}//${hostname}:3005`;
+            } else if (hostname === 'raidforge.pro' || hostname === 'www.raidforge.pro') {
+                // Domaine de production
+                return `${protocol}//${hostname}`;
+            } else {
+                // Domaine personnalisé ou autre
+                return `${protocol}//${hostname}${port ? ':' + port : ''}`;
+            }
+        }
+        
+        const API_BASE_URL = getApiBaseUrl();
+        console.log('🌐 API Base URL détectée:', API_BASE_URL);
 
         // Enhanced Toast Notification System
         function showToast(message, type = 'info', duration = 5000) {
