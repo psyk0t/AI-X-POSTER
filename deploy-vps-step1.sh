@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ===========================================
-# SCRIPT DE DÉPLOIEMENT VPS - PSYKO-TRAIDER
+# SCRIPT DE DÉPLOIEMENT VPS - AI-X-POSTER
 # ===========================================
 
 echo "🚀 Début du déploiement..."
@@ -17,12 +17,12 @@ sudo npm install -g pm2
 
 # 3. Création du dossier projet
 echo "📁 Création du dossier projet..."
-mkdir -p ~/psyk0t-raider
-cd ~/psyk0t-raider
+mkdir -p ~/AI-X-POSTER
+cd ~/AI-X-POSTER
 
 echo "✅ Prérequis installés !"
 echo ""
 echo "📋 PROCHAINES ÉTAPES :"
-echo "1. Upload ton code dans ~/psyk0t-raider/"
+echo "1. Upload ton code dans ~/AI-X-POSTER/"
 echo "2. Lance : ./deploy-step2.sh"
 echo "3. Puis : ./deploy-step3.sh"
