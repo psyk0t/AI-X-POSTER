@@ -5,7 +5,8 @@
 # ===========================================
 
 echo "📦 Installation des dépendances..."
-cd ~/psyk0t-raider
+# Aller dans le dossier projet
+cd ~/AI-X-POSTER
 
 # Installer les dépendances
 npm install --production
