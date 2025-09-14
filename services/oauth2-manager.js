@@ -19,11 +19,12 @@ class OAuth2Manager {
         this.timers = new TimerManager('oauth2');
         
         this.appCredentials = {
-            clientId: process.env.X_CLIENT_ID,
-            clientSecret: process.env.X_CLIENT_SECRET,
+            clientId: process.env.OAUTH2_CLIENT_ID || process.env.X_CLIENT_ID,
+            clientSecret: process.env.OAUTH2_CLIENT_SECRET || process.env.X_CLIENT_SECRET,
         };
         
-        this.callbackUrl = process.env.OAUTH2_CALLBACK_URL || 'http://localhost:3005/oauth2/callback';
+        // Détection automatique de l'URL de callback basée sur l'environnement
+        this.callbackUrl = this.getCallbackUrl();
         this.dataFile = path.join(__dirname, '..', 'oauth2-users.json');
         
         // Load existing users
@@ -35,6 +36,26 @@ class OAuth2Manager {
         this.startTokenRefreshScheduler();
         
         logToFile('[OAUTH2] OAuth 2.0 Manager service initialized');
+    }
+
+    /**
+     * Détection automatique de l'URL de callback
+     */
+    getCallbackUrl() {
+        // Priorité 1: Variable d'environnement explicite
+        if (process.env.OAUTH2_CALLBACK_URL) {
+            return process.env.OAUTH2_CALLBACK_URL;
+        }
+        
+        // Priorité 2: Détecter si on est en production (domaine)
+        if (process.env.NODE_ENV === 'production' || process.env.DOMAIN_NAME) {
+            const domain = process.env.DOMAIN_NAME || 'raidforge.pro';
+            const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+            return `${protocol}://${domain}/oauth2/callback`;
+        }
+        
+        // Priorité 3: Environnement local par défaut
+        return 'http://localhost:3005/oauth2/callback';
     }
 
     /**
@@ -66,9 +87,19 @@ class OAuth2Manager {
 
         logToFile(`[OAUTH2] Invitation token generated: ${inviteToken} for project ${projectId}`);
         
+        // Construire l'URL d'invitation correctement
+        const baseUrl = this.callbackUrl.replace('/oauth2/callback', '');
+        // S'assurer qu'il n'y a pas de double slash et corriger le protocole
+        let inviteUrl = `${baseUrl}/invite/${inviteToken}`;
+        
+        // Corriger les problèmes d'URL
+        inviteUrl = inviteUrl.replace(/([^:]\/)\/+/g, '$1'); // Supprimer les doubles slashes
+        inviteUrl = inviteUrl.replace(/^hhttp:/, 'http:'); // Corriger le double h
+        inviteUrl = inviteUrl.replace(/^hhttps:/, 'https:'); // Corriger le double h pour https
+        
         return {
             token: inviteToken,
-            inviteUrl: `${this.callbackUrl.replace('/oauth2/callback', '')}/invite/${inviteToken}`,
+            inviteUrl: inviteUrl,
             expiresAt: this.invitations.get(inviteToken).expiresAt
         };
     }
