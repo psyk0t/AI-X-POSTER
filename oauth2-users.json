@@ -1,16 +1,16 @@
 [
   [
-    "1766748886276927488",
+    "153720161",
     {
-      "id": "1766748886276927488",
-      "username": "PrinceNganooSOL",
-      "name": "Prince Nganoo",
-      "accessToken": "eDBVNWVrSk9CYjgtc2dCNWNxb1U2NGI1dndOalhZY1h4amtzbExUVnd2RkF6OjE3NTU4ODAwMDAwMDQ6MToxOmF0OjE",
-      "refreshToken": "TS1sYTJPQnJveU1vSkhqeWExQWY4azc0c2V3MFRod0Q0dlNBck45cnJLUlhfOjE3NTU4ODAwMDAwMDQ6MTowOnJ0OjE",
+      "id": "153720161",
+      "username": "psyk0t",
+      "name": "psyk0t.base.eth",
+      "accessToken": "R3NJbGtJUzE4SzQtVG1sWDFPbWpBenRvZ0Q0RUVqb0N5S21yUmlBb2YtVkZxOjE3NTc4NDEzODQwMjk6MToxOmF0OjE",
+      "refreshToken": "THFkS1AxS09wLW93eFFtLTdhbGpqNHczVHJVS3NZc3QyUVNXOXd3WEwtS3pKOjE3NTc4NDEzODQwMjk6MToxOnJ0OjE",
       "expiresIn": 7200,
-      "expiresAt": "2025-08-22T18:26:40.040Z",
+      "expiresAt": "2025-09-14T11:16:24.137Z",
       "projectId": "default",
-      "connectedAt": "2025-08-22T06:51:24.441Z",
+      "connectedAt": "2025-09-13T10:53:47.114Z",
       "authMethod": "oauth2",
       "scopes": [
         "tweet.read",
@@ -20,9 +20,187 @@
         "like.write",
         "follows.read",
         "follows.write",
+        "media.write",
         "offline.access"
       ],
-      "lastRefresh": "2025-08-22T16:26:40.040Z"
+      "scopesRequested": [
+        "tweet.read",
+        "tweet.write",
+        "users.read",
+        "like.read",
+        "like.write",
+        "follows.read",
+        "follows.write",
+        "media.write",
+        "offline.access"
+      ],
+      "scopesGranted": [
+        "follows.read",
+        "offline.access",
+        "tweet.write",
+        "media.write",
+        "like.write",
+        "like.read",
+        "users.read",
+        "tweet.read",
+        "follows.write"
+      ],
+      "missingCriticalScopes": [],
+      "criticalScopesOk": true,
+      "lastRefresh": "2025-09-14T09:16:24.137Z"
+    }
+  ],
+  [
+    "1766748886276927488",
+    {
+      "id": "1766748886276927488",
+      "username": "PrinceNganooSOL",
+      "name": "Prince Nganoo",
+      "accessToken": "Wk5qUVVBeW9RN2tRc0dadV9hYlZKYmtQakZxUHFlaFpNTko2eDhCUGZ2R0dnOjE3NTc4NDE2MzIyNjQ6MTowOmF0OjE",
+      "refreshToken": "UkVPNmVzblh4Qm1SVXhlZW56UjZRVzNpUjJsRTJHbTdNVFVqb1MxRVBZcjBEOjE3NTc4NDE2MzIyNjQ6MToxOnJ0OjE",
+      "expiresIn": 7200,
+      "expiresAt": "2025-09-14T11:20:32.375Z",
+      "projectId": "default",
+      "connectedAt": "2025-09-13T11:17:07.089Z",
+      "authMethod": "oauth2",
+      "scopes": [
+        "tweet.read",
+        "tweet.write",
+        "users.read",
+        "like.read",
+        "like.write",
+        "follows.read",
+        "follows.write",
+        "media.write",
+        "offline.access"
+      ],
+      "scopesRequested": [
+        "tweet.read",
+        "tweet.write",
+        "users.read",
+        "like.read",
+        "like.write",
+        "follows.read",
+        "follows.write",
+        "media.write",
+        "offline.access"
+      ],
+      "scopesGranted": [
+        "follows.read",
+        "offline.access",
+        "tweet.write",
+        "media.write",
+        "like.write",
+        "like.read",
+        "users.read",
+        "tweet.read",
+        "follows.write"
+      ],
+      "missingCriticalScopes": [],
+      "criticalScopesOk": true,
+      "lastRefresh": "2025-09-14T09:20:32.375Z"
+    }
+  ],
+  [
+    "1040056033",
+    {
+      "id": "1040056033",
+      "username": "totororo1161",
+      "name": "ぬ",
+      "accessToken": "VHEzazBZQ1JRYWFHUkxSTGdzUEtOSzJXdG5UNmlobm9wZEs0aVJUclFkQjJBOjE3NTc4NDQyMDIzOTI6MTowOmF0OjE",
+      "refreshToken": "N3VFZFFCTEt2bjdEQ1ByX2xCdTdHcEhuaDZZOU9qbUtlVmlXOUlIajNfNVphOjE3NTc4NDQyMDIzOTI6MTowOnJ0OjE",
+      "expiresIn": 7200,
+      "expiresAt": "2025-09-14T12:03:22.495Z",
+      "projectId": "default",
+      "connectedAt": "2025-09-13T11:17:48.848Z",
+      "authMethod": "oauth2",
+      "scopes": [
+        "tweet.read",
+        "tweet.write",
+        "users.read",
+        "like.read",
+        "like.write",
+        "follows.read",
+        "follows.write",
+        "media.write",
+        "offline.access"
+      ],
+      "scopesRequested": [
+        "tweet.read",
+        "tweet.write",
+        "users.read",
+        "like.read",
+        "like.write",
+        "follows.read",
+        "follows.write",
+        "media.write",
+        "offline.access"
+      ],
+      "scopesGranted": [
+        "follows.read",
+        "offline.access",
+        "tweet.write",
+        "media.write",
+        "like.write",
+        "like.read",
+        "users.read",
+        "tweet.read",
+        "follows.write"
+      ],
+      "missingCriticalScopes": [],
+      "criticalScopesOk": true,
+      "lastRefresh": "2025-09-14T10:03:22.495Z"
+    }
+  ],
+  [
+    "2717811578",
+    {
+      "id": "2717811578",
+      "username": "w3kirinyan",
+      "name": "まみや☆*°",
+      "accessToken": "ZTNsRVZvYm12cXVtVDRCWXFhVHg1ZmR4dE04bkZBdW1mRmRBRWR6di1CVElVOjE3NTc4NDE2MzI0MTg6MToxOmF0OjE",
+      "refreshToken": "N3BfalhqVnJ5SVZGWFlKM0xMVjUxSTVnVTRacm1XMzlHcXZuU2lzMk9RU2FOOjE3NTc4NDE2MzI0MTg6MToxOnJ0OjE",
+      "expiresIn": 7200,
+      "expiresAt": "2025-09-14T11:20:32.520Z",
+      "projectId": "default",
+      "connectedAt": "2025-09-13T11:18:35.847Z",
+      "authMethod": "oauth2",
+      "scopes": [
+        "tweet.read",
+        "tweet.write",
+        "users.read",
+        "like.read",
+        "like.write",
+        "follows.read",
+        "follows.write",
+        "media.write",
+        "offline.access"
+      ],
+      "scopesRequested": [
+        "tweet.read",
+        "tweet.write",
+        "users.read",
+        "like.read",
+        "like.write",
+        "follows.read",
+        "follows.write",
+        "media.write",
+        "offline.access"
+      ],
+      "scopesGranted": [
+        "follows.read",
+        "offline.access",
+        "tweet.write",
+        "media.write",
+        "like.write",
+        "like.read",
+        "users.read",
+        "tweet.read",
+        "follows.write"
+      ],
+      "missingCriticalScopes": [],
+      "criticalScopesOk": true,
+      "lastRefresh": "2025-09-14T09:20:32.520Z"
     }
   ],
   [
@@ -31,12 +209,12 @@
       "id": "547832333",
       "username": "yashi190",
       "name": "椰子の木",
-      "accessToken": "ek1VLUZZWXJvV002cGVhWkxJQzlwVVBjaHMzUVVOTkRlbldEYl9ZRVVrLUl5OjE3NTU4ODAwMDAxNjE6MToxOmF0OjE",
-      "refreshToken": "YkVONXI5MkFUNUlwSEVDRWJsN0ZaOTUweEFXTmhyZEQwTW93NGRmZHhiVXRkOjE3NTU4ODAwMDAxNjE6MToxOnJ0OjE",
+      "accessToken": "dmNNV3FxWHVWSkFyQlFPR2tVVHFyQ29TaksxTkRVSEpKcGY5OHdvODVFbURoOjE3NTc4NDE2MzI1NTk6MTowOmF0OjE",
+      "refreshToken": "UXdIX2xybE9pWVRtQ2J6blVnNVFsZlhiNDZFSlZUcktSNjRlOXNtYXg1cUlZOjE3NTc4NDE2MzI1NTk6MToxOnJ0OjE",
       "expiresIn": 7200,
-      "expiresAt": "2025-08-22T18:26:40.203Z",
+      "expiresAt": "2025-09-14T11:20:32.666Z",
       "projectId": "default",
-      "connectedAt": "2025-08-22T06:51:50.474Z",
+      "connectedAt": "2025-09-13T11:19:00.862Z",
       "authMethod": "oauth2",
       "scopes": [
         "tweet.read",
@@ -46,23 +224,48 @@
         "like.write",
         "follows.read",
         "follows.write",
+        "media.write",
         "offline.access"
       ],
-      "lastRefresh": "2025-08-22T16:26:40.203Z"
+      "scopesRequested": [
+        "tweet.read",
+        "tweet.write",
+        "users.read",
+        "like.read",
+        "like.write",
+        "follows.read",
+        "follows.write",
+        "media.write",
+        "offline.access"
+      ],
+      "scopesGranted": [
+        "follows.read",
+        "offline.access",
+        "tweet.write",
+        "media.write",
+        "like.write",
+        "like.read",
+        "users.read",
+        "tweet.read",
+        "follows.write"
+      ],
+      "missingCriticalScopes": [],
+      "criticalScopesOk": true,
+      "lastRefresh": "2025-09-14T09:20:32.666Z"
     }
   ],
   [
-    "2440510039",
+    "1032493598",
     {
-      "id": "2440510039",
-      "username": "tuikyasuyoutori",
-      "name": "69_clay",
-      "accessToken": "anoyRTlfUVY2ZFo3Ql8wTUVhOGxZa1pvMTQwMnhPUEF5UG56TlBnbnpTVDhkOjE3NTU4ODAwMDAzMzU6MTowOmF0OjE",
-      "refreshToken": "WE42WmZzRU1Zc014VXRuTjNjcE5yUm1QdUhFZ2U5T0kydmFzSzU2VEZqRm04OjE3NTU4ODAwMDAzMzU6MToxOnJ0OjE",
+      "id": "1032493598",
+      "username": "nbenavidesribic",
+      "name": "Naty Ribic Masajes",
+      "accessToken": "clRPdEFGWk5vdzhZYzdmeHQ4SHQ4WV9ERzJjVjd0RFllR2xVZEJZanlVNDIxOjE3NTc4NDE2MzI3MDg6MToxOmF0OjE",
+      "refreshToken": "SGZRTTFvVmQtM3MtODRlcG1DLUxtLWVOS0FoWWo4cEhwalFnV2JwRGhjS0JHOjE3NTc4NDE2MzI3MDk6MTowOnJ0OjE",
       "expiresIn": 7200,
-      "expiresAt": "2025-08-22T18:26:40.367Z",
+      "expiresAt": "2025-09-14T11:20:32.812Z",
       "projectId": "default",
-      "connectedAt": "2025-08-22T06:52:36.766Z",
+      "connectedAt": "2025-09-13T11:19:22.127Z",
       "authMethod": "oauth2",
       "scopes": [
         "tweet.read",
@@ -72,25 +275,10 @@
         "like.write",
         "follows.read",
         "follows.write",
+        "media.write",
         "offline.access"
       ],
-      "lastRefresh": "2025-08-22T16:26:40.367Z"
-    }
-  ],
-  [
-    "153720161",
-    {
-      "id": "153720161",
-      "username": "psyk0t",
-      "name": "psyk0t.base.eth",
-      "accessToken": "eW5fUi00QndCU1J3STNVbFJIcWNGU2VUSTFCaGFjMF9ER2VNXzYtN2xBQVktOjE3NTU4NzU3ODg4NDc6MTowOmF0OjE",
-      "refreshToken": "MUIwU2l6emJKc3hOWFBralN4eGJ3OFA3SFJ6eDdTTWtHeS1LTmcxSVMtVTlROjE3NTU4NzU3ODg4NDc6MTowOnJ0OjE",
-      "expiresIn": 7200,
-      "expiresAt": "2025-08-22T17:16:28.880Z",
-      "projectId": "default",
-      "connectedAt": "2025-08-22T12:07:48.606Z",
-      "authMethod": "oauth2",
-      "scopes": [
+      "scopesRequested": [
         "tweet.read",
         "tweet.write",
         "users.read",
@@ -98,9 +286,23 @@
         "like.write",
         "follows.read",
         "follows.write",
+        "media.write",
         "offline.access"
       ],
-      "lastRefresh": "2025-08-22T15:16:28.880Z"
+      "scopesGranted": [
+        "follows.read",
+        "offline.access",
+        "tweet.write",
+        "media.write",
+        "like.write",
+        "like.read",
+        "users.read",
+        "tweet.read",
+        "follows.write"
+      ],
+      "missingCriticalScopes": [],
+      "criticalScopesOk": true,
+      "lastRefresh": "2025-09-14T09:20:32.812Z"
     }
   ]
 ]

@@ -1,70 +1,240 @@
 require('dotenv').config();
 const fs = require('fs');
 const express = require('express');
-const session = require('express-session');
-const bcrypt = require('bcryptjs');
-const path = require('path');
-const { TwitterApi } = require('twitter-api-v2');
 const cors = require('cors');
+const path = require('path');
+const multer = require('multer');
+const { TwitterApi } = require('twitter-api-v2');
+require('dotenv').config();
+
+// Import du gestionnaire d'authentification sécurisé
+const authManager = require('./services/auth-manager');
+const authRoutes = require('./routes/auth-routes');
 const http = require('http');
 const { Server } = require('socket.io');
-const multer = require('multer');
+const compression = require('compression');
+const { TimerManager } = require('./services/timer-utils');
 
-// Import des services modulaires
-const { logToFile, getFilteredLogsFromFile, generateDownloadableLogsContent, logEmitter } = require('./services/logs-optimized');
-const { getCacheInstance } = require('./services/cache');
-const cache = getCacheInstance();
-const encryption = require('./services/encryption');
-const rateLimiter = require('./services/rate-limiter');
-const analytics = require('./services/analytics');
-const smartScheduler = require('./services/smart-scheduler');
-const { runAutomationScan, pushLiveLog, logSystemAction, randomDelay } = require('./services/automation');
-const { generateUniqueAIComments: generateAICommentsFromService } = require('./services/ai');
-const InfluencerDetector = require('./services/influencer-detector');
-const { getOAuth2Manager } = require('./services/oauth2-manager');
-const { startTokenRefreshScheduler, getTokenRefreshScheduler } = require('./services/token-refresh-scheduler');
-const { loadStats, getStats, recalculateFromLogs } = require('./services/actions-stats');
-const { loadTokenSettings: loadTokenSettingsFromService, saveTokenSettings: saveTokenSettingsToService } = require('./services/tokenSettings');
+// 🚀 NOUVEAUX SERVICES OPTIMISÉS
+const { getUnifiedLogger } = require('./services/unified-logger');
+const { getPerformanceMonitor } = require('./services/performance-monitor');
+const { getErrorHandler } = require('./services/error-handler');
+const analyticsService = require('./services/advanced-analytics');
 
-// 🎯 SYSTÈME DE QUOTAS UNIFIÉ - MASTER QUOTA MANAGER
-const { getMasterQuotaManager } = require('./services/master-quota-manager');
-const masterQuota = getMasterQuotaManager();
+// Exécution principale vs import (évite que les tests/scripts ne lancent des timers/serveur)
+const IS_MAIN = require.main === module;
+const serverTimers = new TimerManager('server');
+
+// Arrêt propre des services et timers (enregistré globalement)
+let isShuttingDown = false;
+async function gracefulShutdown(reason = 'shutdown') {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    try {
+        console.log(`[SHUTDOWN] Starting graceful shutdown due to: ${reason}`);
+        // 🚀 Nettoyage des nouveaux services optimisés
+        try { const logger = unifiedLogger; if (logger && typeof logger.flush === 'function') await logger.flush(); } catch (e) { console.error('[SHUTDOWN] unified-logger cleanup error:', e?.message || e); }
+        try { const monitor = getPerformanceMonitorInstance(); if (monitor && typeof monitor.cleanup === 'function') await monitor.cleanup(); } catch (e) { console.error('[SHUTDOWN] performance-monitor cleanup error:', e?.message || e); }
+        try { const errorHandler = getErrorHandlerInstance(); if (errorHandler && typeof errorHandler.cleanup === 'function') await errorHandler.cleanup(); } catch (e) { console.error('[SHUTDOWN] error-handler cleanup error:', e?.message || e); }
+        
+        // Services legacy
+        try { if (analytics && typeof analytics.cleanup === 'function') await analytics.cleanup(); } catch (e) { console.error('[SHUTDOWN] analytics cleanup error:', e?.message || e); }
+        try { if (smartScheduler && typeof smartScheduler.cleanup === 'function') await smartScheduler.cleanup(); } catch (e) { console.error('[SHUTDOWN] smart-scheduler cleanup error:', e?.message || e); }
+        try { if (typeof automationCleanup === 'function') automationCleanup(); } catch (e) { console.error('[SHUTDOWN] automation cleanup error:', e?.message || e); }
+        try { const o2 = getOAuth2Manager(); if (o2 && typeof o2.cleanup === 'function') await o2.cleanup(); } catch (e) { console.error('[SHUTDOWN] oauth2 cleanup error:', e?.message || e); }
+        try { const trs = getTokenRefreshScheduler(); if (trs) { if (typeof trs.cleanup === 'function') await trs.cleanup(); else if (typeof trs.stop === 'function') trs.stop(); } } catch (e) { console.error('[SHUTDOWN] token-refresh cleanup error:', e?.message || e); }
+        try { if (rateLimiter && typeof rateLimiter.cleanup === 'function') await rateLimiter.cleanup(); } catch (e) { console.error('[SHUTDOWN] rate-limiter cleanup error:', e?.message || e); }
+        try { if (cache && typeof cache.cleanup === 'function') await cache.cleanup(); } catch (e) { console.error('[SHUTDOWN] cache cleanup error:', e?.message || e); }
+    } finally {
+        try { serverTimers.clearInterval('automation_poll'); } catch (_) {}
+        try { serverTimers.clearAll(); } catch (_) {}
+        try {
+            if (typeof server !== 'undefined' && server && typeof server.close === 'function') {
+                server.close(() => {
+                    console.log('[SHUTDOWN] HTTP server closed');
+                    process.exit(0);
+                });
+                // Forcer l'exit si close traîne
+                setTimeout(() => process.exit(0), 3000).unref?.();
+            } else {
+                process.exit(0);
+            }
+        } catch (e) {
+            process.exit(0);
+        }
+    }
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('beforeExit', () => gracefulShutdown('beforeExit'));
+
+// 🚀 LAZY LOADING DES SERVICES OPTIMISÉS (évite les erreurs d'initialisation)
+let performanceMonitor, errorHandler;
+
+function getPerformanceMonitorInstance() {
+    if (!performanceMonitor) {
+        performanceMonitor = getPerformanceMonitor();
+    }
+    return performanceMonitor;
+}
+
+function getErrorHandlerInstance() {
+    if (!errorHandler) {
+        errorHandler = getErrorHandler();
+    }
+    return errorHandler;
+}
+
+// Utiliser le service unifié de logs déjà importé
+const unifiedLogger = getUnifiedLogger();
+
+// Wrapper de compatibilité pour les anciens appels
+const logEmitter = unifiedLogger; // UnifiedLogger extends EventEmitter
+async function getFilteredLogsFromFile(limit = 100, offset = 0) {
+    const result = await unifiedLogger.getLogs(limit, offset);
+    return result.logs || [];
+}
+async function generateDownloadableLogsContent() {
+    return await unifiedLogger.generateExport('txt');
+}
+async function getLogsIncremental(limit = 100) {
+    const result = await unifiedLogger.getLogs(limit, 0);
+    return { logs: result.logs || [], total: result.total || 0 };
+}
+
+// Wrapper de compatibilité pour logToFile
+function logToFile(message) {
+    return unifiedLogger.logToFile(message);
+}
+
+// 🚀 LAZY LOADING DES SERVICES (chargement à la demande)
+let cache, encryption, rateLimiter, analytics, smartScheduler, automation, ai, oauth2Manager, tokenRefreshScheduler, actionsStats, tokenSettings, masterQuota;
+
+function getCache() {
+    if (!cache) {
+        const { getCacheInstance } = require('./services/cache');
+        cache = getCacheInstance();
+    }
+    return cache;
+}
+
+function getEncryption() {
+    if (!encryption) encryption = require('./services/encryption');
+    return encryption;
+}
+
+function getRateLimiter() {
+    if (!rateLimiter) rateLimiter = require('./services/rate-limiter');
+    return rateLimiter;
+}
+
+function getAnalytics() {
+    if (!analytics) analytics = require('./services/analytics');
+    return analytics;
+}
+
+function getSmartScheduler() {
+    if (!smartScheduler) smartScheduler = require('./services/smart-scheduler');
+    return smartScheduler;
+}
+
+function getAutomation() {
+    if (!automation) {
+        const { runAutomationScan, pushLiveLog, logSystemAction, randomDelay, getConcurrencyStatus, cleanup: automationCleanup } = require('./services/automation');
+        automation = { runAutomationScan, pushLiveLog, logSystemAction, randomDelay, getConcurrencyStatus, cleanup: automationCleanup };
+    }
+    return automation;
+}
+
+function getAI() {
+    if (!ai) {
+        const { generateUniqueAIComments: generateAICommentsFromService, getAiLimitsState } = require('./services/ai');
+        ai = { generateAICommentsFromService, getAiLimitsState };
+    }
+    return ai;
+}
+
+
+function getOAuth2Manager() {
+    if (!oauth2Manager) {
+        const { getOAuth2Manager } = require('./services/oauth2-manager');
+        oauth2Manager = getOAuth2Manager();
+    }
+    return oauth2Manager;
+}
+
+function getTokenRefreshScheduler() {
+    if (!tokenRefreshScheduler) {
+        const { startTokenRefreshScheduler, getTokenRefreshScheduler } = require('./services/token-refresh-scheduler');
+        tokenRefreshScheduler = { startTokenRefreshScheduler, getTokenRefreshScheduler };
+    }
+    return tokenRefreshScheduler;
+}
+
+function getActionsStats() {
+    if (!actionsStats) {
+        const { loadStats, getStats, recalculateFromLogs } = require('./services/actions-stats');
+        actionsStats = { loadStats, getStats, recalculateFromLogs };
+    }
+    return actionsStats;
+}
+
+function getTokenSettings() {
+    if (!tokenSettings) {
+        const { loadTokenSettings: loadTokenSettingsFromService, saveTokenSettings: saveTokenSettingsToService } = require('./services/tokenSettings');
+        tokenSettings = { loadTokenSettingsFromService, saveTokenSettingsToService };
+    }
+    return tokenSettings;
+}
+
+function getMasterQuota() {
+    if (!masterQuota) {
+        const { getMasterQuotaManager } = require('./services/master-quota-manager');
+        masterQuota = getMasterQuotaManager();
+    }
+    return masterQuota;
+}
+
+function getMasterQuotaManager() {
+    return getMasterQuota();
+}
 
 // 🎯 FONCTIONS WRAPPER POUR COMPATIBILITÉ
 function getSharedQuotaStats() {
-    return masterQuota.getStats();
+    return getMasterQuota().getStats();
 }
 
 function addSharedAccount(accountId, username, authMethod) {
-    return masterQuota.addAccount(accountId, username, authMethod);
+    return getMasterQuota().addAccount(accountId, username, authMethod);
 }
 
 function removeSharedAccount(accountId) {
-    return masterQuota.deactivateAccount(accountId);
+    return getMasterQuotaManager().deactivateAccount(accountId);
 }
 
 function canPerformSharedAction(accountId, actionType) {
-    return masterQuota.canPerformAction(accountId);
+    return getMasterQuotaManager().canPerformAction(accountId);
 }
 
 function consumeSharedAction(accountId, actionType) {
-    return masterQuota.consumeAction(accountId, actionType);
+    return getMasterQuotaManager().consumeAction(accountId, actionType);
 }
 
 function updateGlobalPack(totalActions, packType, expiryDate) {
-    return masterQuota.updateGlobalPack(totalActions, packType, expiryDate);
+    return getMasterQuotaManager().updateGlobalPack(totalActions, packType, expiryDate);
 }
 
 function resetSharedDailyQuotas() {
-    return masterQuota.resetDailyQuotas();
+    return getMasterQuotaManager().resetDailyQuotas();
 }
 
 function recalculateQuotaAllocation() {
-    return masterQuota.recalculateAllocation();
+    return getMasterQuotaManager().recalculateAllocation();
 }
 
 function getActiveAccountsForDisplay() {
-    const stats = masterQuota.getStats();
+    const stats = getMasterQuotaManager().getStats();
     return stats.activeAccounts;
 }
 
@@ -96,10 +266,10 @@ function calculateActionsLeftForAccount(accountId) {
 }
 
 // Initialisation immédiate du service de chiffrement
-encryption.initialize().then(result => {
+getEncryption().initialize().then(result => {
     if (result) {
         logToFile('[ENCRYPTION] Service de chiffrement initialisé avec succès');
-        encryption.selfTest().then(testResult => {
+        getEncryption().selfTest().then(testResult => {
             if (testResult) {
                 logToFile('[ENCRYPTION] Auto-test réussi - Chiffrement opérationnel');
             } else {
@@ -114,14 +284,16 @@ encryption.initialize().then(result => {
 });
 
 // Initialisation immédiate du service de rate limiting
-rateLimiter.initialize().then(result => {
+getRateLimiter().initialize().then(result => {
     if (result) {
         logToFile('[RATE-LIMITER] Service de rate limiting initialisé avec succès');
         
-        // Nettoyage périodique toutes les heures
-        setInterval(async () => {
-            await rateLimiter.cleanup();
-        }, 3600000); // 1 heure
+        // Nettoyage périodique toutes les heures (uniquement en exécution principale)
+        if (IS_MAIN) {
+            serverTimers.setInterval('rateLimiter_cleanup', async () => {
+                await getRateLimiter().cleanup();
+            }, 3600000, { unref: true }); // 1 heure
+        }
     } else {
         logToFile('[RATE-LIMITER] Échec d\'initialisation du service de rate limiting');
     }
@@ -130,10 +302,10 @@ rateLimiter.initialize().then(result => {
 });
 
 // Initialisation immédiate du service de planification intelligente
-smartScheduler.initialize().then(result => {
+getSmartScheduler().initialize().then(result => {
     if (result) {
         logToFile('[SMART-SCHEDULER] Service de planification intelligente initialisé avec succès');
-        const stats = smartScheduler.getStats();
+        const stats = getSmartScheduler().getStats();
         logToFile(`[SMART-SCHEDULER] ${stats.engagementPatterns.totalActionsAnalyzed || 0} actions analysées pour les patterns d'engagement`);
     } else {
         logToFile('[SMART-SCHEDULER] Échec d\'initialisation du service de planification intelligente');
@@ -143,7 +315,7 @@ smartScheduler.initialize().then(result => {
 });
 
 // Initialisation immédiate du service d'analytics
-analytics.initialize().then(result => {
+getAnalytics().initialize().then(result => {
     if (result) {
         logToFile('[ANALYTICS] Service d\'analytics initialisé avec succès');
     } else {
@@ -154,14 +326,16 @@ analytics.initialize().then(result => {
 });
 
 // Initialisation immédiate du service de cache Redis
-cache.initialize().then(result => {
+getCache().initialize().then(result => {
     if (result) {
         logToFile('[CACHE] Service de cache Redis initialisé avec succès');
         
-        // Nettoyage périodique des clés expirées toutes les heures
-        setInterval(async () => {
-            await cache.cleanup();
-        }, 3600000); // 1 heure
+        // Nettoyage périodique des clés expirées toutes les heures (uniquement en exécution principale)
+        if (IS_MAIN) {
+            serverTimers.setInterval('cache_cleanup', async () => {
+                await getCache().cleanup();
+            }, 3600000, { unref: true }); // 1 heure
+        }
     } else {
         logToFile('[CACHE] Redis non disponible - Mode dégradé activé (fonctionnement sans cache)');
     }
@@ -169,22 +343,8 @@ cache.initialize().then(result => {
     logToFile(`[CACHE] Erreur d'initialisation: ${err.message}`);
 });
 
-// INFLUENCER DETECTOR DÉSACTIVÉ
-const influencerDetector = {
-    getInfluencerStats: () => ({ totalInteractions: 0, tierBreakdown: {} }),
-    getRecentInteractions: () => [],
-    getInteractionsByTier: () => [],
-    recordInfluencerInteraction: () => null,
-    simulateInfluencerInteraction: () => null,
-    initializeTwitterClient: () => false,
-    addTweetToMonitor: () => {},
-    removeTweetFromMonitor: () => {},
-    startContinuousMonitoring: () => {},
-    stopContinuousMonitoring: () => {},
-    monitorTweetInteractions: () => false,
-    monitoredTweets: new Set()
-};
-console.log('[INFLUENCER DETECTOR] Service stub initialized');
+// INFLUENCER DETECTOR DÉSACTIVÉ (lazy loaded)
+// Utiliser getInfluencerDetector() pour accéder au service
 
 // Configurer les webhooks pour les interactions d'influenceurs - DÉSACTIVÉ
 /*
@@ -233,9 +393,9 @@ function setupAutoTweetMonitoring() {
 setupAutoTweetMonitoring();
 */
 
-// Initialiser le service OAuth 2.0 Manager
-const oauth2Manager = getOAuth2Manager();
-logToFile(`[OAUTH2] Service initialisé - ${oauth2Manager.getStats().totalUsers} utilisateurs chargés`);
+// OAuth 2.0 Manager sera initialisé à la demande via getOAuth2Manager()
+// const oauth2Manager = getOAuth2Manager();
+// logToFile(`[OAUTH2] Service initialisé - ${oauth2Manager.getStats().totalUsers} utilisateurs chargés`);
 
 /**
  * Fonction pour récupérer TOUS les comptes connectés (OAuth 1.0a + OAuth 2.0)
@@ -250,7 +410,7 @@ function getAllConnectedAccounts() {
     }
     
     // 2. Comptes OAuth 2.0 (nouveaux)
-    const oauth2Users = oauth2Manager.getAllUsers();
+    const oauth2Users = getOAuth2Manager().getAllUsers();
     oauth2Users.forEach(user => {
         // Vérifier si le compte n'est pas déjà présent (éviter les doublons)
         const exists = allAccounts.find(acc => acc.id === user.id);
@@ -301,17 +461,101 @@ const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
+    },
+    transports: ['websocket', 'polling'],
+    pingTimeout: 60000,       // délai avant considération timeout (augmenté)
+    pingInterval: 25000,      // fréquence des pings
+    connectTimeout: 60000,    // timeout de connexion initiale
+    path: '/socket.io',
+    allowEIO3: true,
+    upgradeTimeout: 30000,    // timeout pour upgrade vers websocket
+    maxHttpBufferSize: 1e6    // 1MB buffer max
+});
+
+// --- Diagnostics Socket.IO pour erreurs 400/timeout ---
+io.engine.on('connection_error', (err) => {
+    try {
+        console.error('[WEBSOCKET] connection_error', {
+            code: err.code,
+            message: err.message,
+            context: err.context
+        });
+    } catch (e) {
+        console.error('[WEBSOCKET] connection_error (raw):', err);
     }
 });
 
-// Import des nouveaux services dashboard
+// Log du handshake pour analyser les requêtes entrantes
+io.use((socket, next) => {
+    try {
+        const ua = socket.handshake && socket.handshake.headers ? socket.handshake.headers['user-agent'] : 'unknown';
+        const addr = socket.handshake && socket.handshake.address ? socket.handshake.address : 'unknown';
+        console.log('[WEBSOCKET] Handshake', { address: addr, userAgent: ua });
+    } catch (_) {}
+    next();
+});
+
 const dashboardAggregator = require('./services/dashboard-data-aggregator.js');
 const activityTracker = require('./services/account-activity-tracker.js');
 
 // APIs Dashboard
-app.get('/api/dashboard/overview', async (req, res) => {
+app.get('/api/dashboard/overview', requireClientAuth, async (req, res) => {
     try {
         const data = await dashboardAggregator.getDashboardData();
+
+        // Enrichir les comptes avec le statut de mute/working pour l'UI
+        if (data && data.data && Array.isArray(data.data.accounts)) {
+            const now = Date.now();
+            const enriched = data.data.accounts.map(acc => {
+                // Clé de mute: toujours l'ID du compte (cohérent avec services/automation.js)
+                const muteKey = acc && acc.id ? acc.id : null;
+                // Clé pour les logs "actions récentes": préférer le username (les logs utilisent [username])
+                const logKey = acc && acc.username ? acc.username : (acc && acc.id ? acc.id : null);
+
+                let status = { state: 'active', reason: null, until: null };
+
+                // Mute actif (prioritaire sur tout le reste)
+                if (muteKey && mutedAccounts && typeof mutedAccounts.has === 'function' && mutedAccounts.has(muteKey)) {
+                    const muteUntil = mutedAccounts.get(muteKey);
+                    if (muteUntil && muteUntil > now) {
+                        status.state = 'paused';
+                        status.until = muteUntil;
+                        const remainingMin = Math.ceil((muteUntil - now) / 60000);
+                        status.reason = remainingMin > 60
+                            ? `Rate limit - Pause ${Math.ceil(remainingMin / 60)}h`
+                            : `Rate limit - Pause ${remainingMin}min`;
+                    }
+                }
+
+                // État "working" si automation active et pas muté
+                if (status.state === 'active' && typeof isAutomationEnabled !== 'undefined' && isAutomationEnabled) {
+                    try {
+                        const recent = getRecentActionsForAccount(logKey, 3 * 60 * 1000);
+                        if (recent && recent.length > 0) {
+                            status.state = 'working';
+                            const lastAction = recent[0];
+                            const secs = Math.round((Date.now() - new Date(lastAction.timestamp).getTime()) / 1000);
+                            status.reason = `Working - ${recent.length} action(s) (${secs}s ago)`;
+                        } else if (global.isAutomationScanning) {
+                            status.state = 'working';
+                            status.reason = 'Scanning for new tweets...';
+                        }
+                    } catch (e) {
+                        // Non-bloquant
+                    }
+                }
+
+                return {
+                    ...acc,
+                    status,
+                    isMuted: status.state === 'paused',
+                    muteUntil: status.until
+                };
+            });
+
+            data.data.accounts = enriched;
+        }
+
         res.json(data);
     } catch (error) {
         console.error('[API] Erreur dashboard overview:', error);
@@ -329,7 +573,7 @@ app.get('/api/dashboard/accounts-activity', async (req, res) => {
     }
 });
 
-app.get('/api/dashboard/recent-activity', async (req, res) => {
+app.get('/api/dashboard/recent-activity', requireClientAuth, async (req, res) => {
     try {
         const hours = parseInt(req.query.hours) || 24;
         const recentActions = await activityTracker.getRecentActivity(hours);
@@ -340,58 +584,137 @@ app.get('/api/dashboard/recent-activity', async (req, res) => {
     }
 });
 
-app.get('/api/dashboard/tweet-stats', async (req, res) => {
+app.get('/api/dashboard/tweet-stats', requireClientAuth, async (req, res) => {
     try {
-        const logContent = await fs.promises.readFile(path.join(__dirname, 'auto-actions.log'), 'utf-8');
-        const lines = logContent.split('\n').reverse();
+        // 1) Mini-cache Redis (30s)
+        const cached = await getCache().getJSON('tweet_stats');
+        if (cached) {
+            return res.json({ success: true, data: cached });
+        }
+
+        // 2) Lecture optimisée via cache incrémental (tail 4MB)
+        const result = getLogsIncremental(2000, 0); // Plus de logs pour historique
+        const logs = Array.isArray(result?.logs) ? result.logs : [];
 
         let tweetsFound = 0;
         let tweetsValid = 0;
+        const scanHistory = [];
+        let lastScanTime = null;
 
-        // Regex pour les deux formats (français et anglais)
-        const foundRegexFr = / (\d+) tweets trouvés au total/;
-        const foundRegexEn = / (\d+) tweets found in total/;
-        const validRegexFr = / (\d+) tweets valides après filtrage/;
-        const validRegexEn = / (\d+) valid tweets after filtering/;
+        // Analyser les logs pour extraire les statistiques réelles
+        const actionCounts = {
+            likes: 0,
+            retweets: 0,
+            replies: 0,
+            total: 0
+        };
 
-        for (const line of lines) {
-            if (tweetsFound > 0 && tweetsValid > 0) break;
+        const uniqueTweets = new Set();
+        const scanSessions = new Map(); // Pour grouper les actions par session de scan
 
-            try {
-                const logEntry = JSON.parse(line);
-                if (tweetsFound === 0 && logEntry.message) {
-                    // Chercher "tweets found in total" (format actuel)
-                    if (foundRegexEn.test(logEntry.message)) {
-                        tweetsFound = parseInt(logEntry.message.match(foundRegexEn)[1], 10);
-                    }
-                    // Fallback pour l'ancien format français
-                    else if (foundRegexFr.test(logEntry.message)) {
-                        tweetsFound = parseInt(logEntry.message.match(foundRegexFr)[1], 10);
-                    }
+        // Parcourir les logs pour extraire les données réelles
+        for (const entry of logs) {
+            const message = entry && entry.message ? entry.message : '';
+            const timestamp = entry && entry.timestamp ? entry.timestamp : null;
+            if (!message || !timestamp) continue;
+
+            // Détecter les actions réelles (likes, retweets, replies)
+            if (message.includes('[SUCCESS]') && message.includes('Action:')) {
+                actionCounts.total++;
+                
+                if (message.includes('like')) {
+                    actionCounts.likes++;
+                } else if (message.includes('retweet')) {
+                    actionCounts.retweets++;
+                } else if (message.includes('reply')) {
+                    actionCounts.replies++;
                 }
-                if (tweetsValid === 0 && logEntry.message) {
-                    // Chercher "valid tweets after filtering" (format actuel)
-                    if (validRegexEn.test(logEntry.message)) {
-                        tweetsValid = parseInt(logEntry.message.match(validRegexEn)[1], 10);
-                    }
-                    // Fallback pour l'ancien format français
-                    else if (validRegexFr.test(logEntry.message)) {
-                        tweetsValid = parseInt(logEntry.message.match(validRegexFr)[1], 10);
-                    }
+
+                // Extraire l'ID du tweet pour compter les tweets uniques
+                const tweetIdMatch = message.match(/tweet (\d+)/);
+                if (tweetIdMatch) {
+                    uniqueTweets.add(tweetIdMatch[1]);
                 }
-            } catch (e) {
-                // Ignorer les lignes qui ne sont pas du JSON valide
+            }
+
+            // Détecter les débuts de scan d'automation
+            if (message.includes('[AUTOMATION]') && message.includes('Starting') || 
+                message.includes('[DYNAMIC]') && message.includes('comptes connectés')) {
+                lastScanTime = timestamp;
+            }
+
+            // Détecter les actions planifiées/générées (format optimisé)
+            if ((message.includes('[DEBUG][ACTION]') && message.includes('Starting action processing')) ||
+                message.includes('[DEBUG][ACTION_BATCH]') ||
+                message.includes('[DEBUG][BATCH_SUMMARY]')) {
+                tweetsValid++;
+            }
+            
+            // Compter les comptes mutés (format optimisé)
+            if (message.includes('[MUTED_BATCH]')) {
+                const mutedMatch = message.match(/\[MUTED_BATCH\]\s*(\d+)\s*comptes mutés/);
+                if (mutedMatch) {
+                    const mutedCount = parseInt(mutedMatch[1]);
+                    // Ajuster le compteur de tweets valides en fonction des comptes mutés
+                    tweetsValid = Math.max(0, tweetsValid - mutedCount);
+                }
+            }
+
+            // Détecter les recherches Twitter réussies
+            if (message.includes('[SUCCESS]') && message.includes('Using account') && message.includes('for Twitter search')) {
+                // Marquer le début d'une session de recherche
+                const sessionKey = new Date(timestamp).toISOString().split('T')[0]; // Par jour
+                if (!scanSessions.has(sessionKey)) {
+                    scanSessions.set(sessionKey, { timestamp, found: 0, valid: 0 });
+                }
             }
         }
 
-        res.json({ success: true, data: { tweetsFound, tweetsValid } });
+        // Utiliser les tweets uniques comme "tweets found"
+        tweetsFound = uniqueTweets.size;
+
+        // Construire l'historique basé sur les sessions réelles
+        for (const [date, session] of scanSessions) {
+            scanHistory.push({
+                timestamp: session.timestamp,
+                found: tweetsFound, // Utiliser le total des tweets uniques
+                valid: tweetsValid // Utiliser le total des actions planifiées
+            });
+        }
+
+        // Si pas d'historique, créer une entrée avec les données actuelles
+        if (scanHistory.length === 0 && (tweetsFound > 0 || tweetsValid > 0)) {
+            scanHistory.push({
+                timestamp: lastScanTime || new Date().toISOString(),
+                found: tweetsFound,
+                valid: tweetsValid
+            });
+        }
+
+        // Limiter l'historique aux 10 derniers scans et trier par date
+        const sortedHistory = scanHistory
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .slice(0, 10);
+
+        const data = { 
+            tweetsFound, 
+            tweetsValid,
+            scanHistory: sortedHistory,
+            actionCounts,
+            lastUpdate: new Date().toISOString(),
+            lastScanTime
+        };
+        
+        await getCache().setJSON('tweet_stats', data, 30);
+
+        res.json({ success: true, data });
     } catch (error) {
         console.error('[API] Erreur tweet stats:', error);
         res.status(500).json({ success: false, error: error.message, data: { tweetsFound: 0, tweetsValid: 0 } });
     }
 });
 
-app.get('/api/dashboard/top-performers', async (req, res) => {
+app.get('/api/dashboard/top-performers', requireClientAuth, async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 5;
         const topPerformers = await activityTracker.getTopPerformers(limit);
@@ -437,12 +760,64 @@ const upload = multer({
     }
 });
 
+// Authentification supprimée pour simplifier
+
 // Middlewares
 app.use(cors());
 app.use(express.json());
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+// Compression HTTP pour accélérer le chargement (HTML/JSON/CSS/JS)
+app.use(compression());
+// Route spécifique pour servir le CSS avec le bon MIME type (AVANT express.static)
+app.get('/public/styles/common.css', (req, res) => {
+    res.type('text/css');
+    const filePath = path.join(__dirname, 'public', 'styles', 'common.css');
+    res.sendFile(filePath);
 });
+
+// Servir les fichiers statiques avec cache navigateur agressif
+const staticCacheOpts = { maxAge: '7d', etag: true, immutable: true };
+app.use(express.static(path.join(__dirname, 'public'), staticCacheOpts));
+// Servir spécifiquement les composants front (sans exposer toute la racine)
+app.use('/components', express.static(path.join(__dirname, 'components'), staticCacheOpts));
+// Servir uniquement le dossier 'Content' pour les images de la landing (sécurisé)
+app.use('/Content', express.static(path.join(__dirname, 'Content'), staticCacheOpts));
+// Exposer explicitement ui.js (utilisé par plusieurs pages)
+app.get('/ui.js', (req, res) => {
+    res.type('application/javascript');
+    const filePath = path.join(__dirname, 'ui.js');
+    res.sendFile(filePath);
+});
+
+// Servir explicitement certains JSON attendus par le dashboard à la racine
+app.get('/actions-stats.json', (req, res) => {
+    try {
+        const filePath = path.join(__dirname, 'actions-stats.json');
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
+        // Fallback éventuel: si pas de fichier, renvoyer les stats du service si disponibles
+        try {
+            const stats = getStats ? getStats() : null;
+            if (stats) return res.json(stats);
+        } catch (_) {}
+        return res.status(404).json({ error: 'actions-stats.json not found' });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/master-quota-config.json', (req, res) => {
+    try {
+        const filePath = path.join(__dirname, 'master-quota-config.json');
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
+        return res.status(404).json({ error: 'master-quota-config.json not found' });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
 app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
@@ -459,6 +834,11 @@ app.get('/help.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'help.html'));
 });
 
+// Route pour le dashboard de performance
+app.get('/performance-dashboard.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'performance-dashboard.html'));
+});
+
 // Route pour la page d'accès sécurisée
 app.get('/access.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'access.html'));
@@ -468,36 +848,174 @@ app.get('/access', (req, res) => {
     res.sendFile(path.join(__dirname, 'access.html'));
 });
 
-// Middleware de protection pour les pages principales (désactivé temporairement)
+// Endpoint d'authentification client
+
+app.post('/api/client-auth', async (req, res) => {
+    try {
+        const { clientId, password } = req.body;
+        
+        if (!clientId || !password) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Client ID et mot de passe requis' 
+            });
+        }
+        
+        console.log(`[AUTH] Tentative d'authentification pour: ${clientId}`);
+        const result = await authManager.authenticateClient(clientId, password);
+        
+        if (result.success) {
+            // Redirection côté serveur vers index.html avec token sécurisé
+            res.redirect(`/index.html?token=${result.token}`);
+        } else {
+            res.status(401).json({
+                success: false,
+                message: result.message || 'Identifiants invalides'
+            });
+        }
+    } catch (error) {
+        console.error('[AUTH] Erreur authentification:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur serveur lors de l\'authentification'
+        });
+    }
+});
+
+// Middleware de protection pour les pages principales
 function requireClientAuth(req, res, next) {
-    // Authentification désactivée temporairement
-    next();
+    const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token || req.cookies?.clientToken;
+    
+    console.log(`[AUTH-MIDDLEWARE] Path: ${req.path}, Token present: ${!!token}`);
+    console.log(`[AUTH-MIDDLEWARE] Headers Authorization:`, req.headers.authorization ? req.headers.authorization.substring(0, 50) + '...' : 'ABSENT');
+    console.log(`[AUTH-MIDDLEWARE] Query token:`, req.query.token ? req.query.token.substring(0, 50) + '...' : 'ABSENT');
+    console.log(`[AUTH-MIDDLEWARE] Cookie token:`, req.cookies?.clientToken ? req.cookies.clientToken.substring(0, 50) + '...' : 'ABSENT');
+    console.log(`[AUTH-MIDDLEWARE] Token final extrait:`, token ? token.substring(0, 50) + '...' : 'NULL');
+    
+    // Pour les requêtes AJAX, ne pas rediriger mais renvoyer une erreur JSON
+    if (!token) {
+        console.log(`[AUTH-MIDDLEWARE] No token found for ${req.path}`);
+        if (req.xhr || req.headers.accept?.indexOf('json') > -1 || req.path.startsWith('/api/')) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+        
+        // Pour les pages HTML, servir la page avec un script de redirection côté client
+        // Cela évite le flash de redirection côté serveur
+        if (req.path.endsWith('.html') || req.path === '/') {
+            const redirectScript = `
+                <script>
+                    // Vérifier le token côté client avant de rediriger
+                    const clientToken = localStorage.getItem('clientToken');
+                    if (!clientToken) {
+                        window.location.href = '/access.html';
+                    } else {
+                        // Token trouvé, recharger avec le token dans l'URL
+                        window.location.href = '${req.path}?token=' + encodeURIComponent(clientToken);
+                    }
+                </script>
+            `;
+            return res.send(redirectScript);
+        }
+        
+        return res.status(401).redirect('/access.html');
+    }
+    
+    try {
+        // Utiliser le vrai système d'authentification
+        const verification = authManager.verifyToken(token);
+        
+        if (!verification.valid) {
+            console.log(`[AUTH-MIDDLEWARE] Token invalide pour ${req.path}: ${verification.message}`);
+            if (req.xhr || req.headers.accept?.indexOf('json') > -1 || req.path.startsWith('/api/')) {
+                return res.status(401).json({ error: verification.message });
+            }
+            
+            // Même logique pour les tokens invalides
+            if (req.path.endsWith('.html') || req.path === '/') {
+                const redirectScript = `
+                    <script>
+                        localStorage.removeItem('clientToken');
+                        window.location.href = '/access.html';
+                    </script>
+                `;
+                return res.send(redirectScript);
+            }
+            
+            return res.status(401).redirect('/access.html');
+        }
+        
+        console.log(`[AUTH-MIDDLEWARE] Token valide pour ${req.path}, client: ${verification.client.clientId}`);
+        req.client = verification.client;
+        next();
+    } catch (error) {
+        console.log(`[AUTH-MIDDLEWARE] Erreur validation token pour ${req.path}:`, error.message);
+        if (req.xhr || req.headers.accept?.indexOf('json') > -1 || req.path.startsWith('/api/')) {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
+        
+        if (req.path.endsWith('.html') || req.path === '/') {
+            const redirectScript = `
+                <script>
+                    localStorage.removeItem('clientToken');
+                    window.location.href = '/access.html';
+                </script>
+            `;
+            return res.send(redirectScript);
+        }
+        
+        return res.status(401).redirect('/access.html');
+    }
 }
 
+// Routes d'authentification API
+app.use('/api/auth', requireClientAuth, authRoutes);
+
 app.get('/dashboard', requireClientAuth, (req, res) => {
-    res.sendFile(path.join(__dirname, 'dashboard.html'));
+    const token = req.query.token;
+    if (token) {
+        res.redirect(`/index.html?token=${token}`);
+    } else {
+        res.redirect('/index.html');
+    }
 });
 
 app.get('/dashboard.html', requireClientAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
-// Protection de la page principale (index.html)
+// Route pour servir index.html
 app.get('/index.html', requireClientAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Route racine vers index.html directement (redirection access.html désactivée)
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+// Route racine redirige toujours vers index.html
+app.get('/', requireClientAuth, (req, res) => {
+    const token = req.query.token;
+    if (token) {
+        res.redirect(`/index.html?token=${token}`);
+    } else {
+        res.redirect('/index.html');
+    }
 });
 
-app.get('/actions-detail.html', (req, res) => {
+app.get('/actions-detail.html', requireClientAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'actions-detail.html'));
 });
 
-app.get('/feedback.html', (req, res) => {
+// Routes explicites pour l'historique des actions (si le middleware statique ne le couvre pas)
+app.get('/actions-history.html', requireClientAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'actions-history.html'));
+});
+app.get('/actions-history', requireClientAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'actions-history.html'));
+});
+
+app.get('/feedback.html', requireClientAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'feedback.html'));
+});
+
+app.get('/help.html', requireClientAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'help.html'));
 });
 
 // Variables pour gérer les invitations OAuth
@@ -520,7 +1038,7 @@ app.get('/invite/:token', async (req, res) => {
             // === NOUVEAU FLOW OAUTH 2.0 ===
             console.log(`[DEBUG] Démarrage flow OAuth 2.0 pour token: ${token}`);
             
-            const authFlow = oauth2Manager.startOAuthFlow(token);
+            const authFlow = getOAuth2Manager().startOAuthFlow(token);
             
             // Rediriger vers l'URL d'autorisation OAuth 2.0
             console.log(`[DEBUG] Redirection OAuth 2.0: ${authFlow.authUrl}`);
@@ -572,7 +1090,7 @@ app.get('/api/auth/twitter/callback', async (req, res) => {
             console.log(`[DEBUG] Traitement callback OAuth 2.0 pour state: ${state}`);
             
             try {
-                const newUser = await oauth2Manager.handleOAuthCallback(code, state);
+                const newUser = await getOAuth2Manager().handleOAuthCallback(code, state);
                 
                 // Ajouter l'utilisateur à la liste des comptes (compatibilité avec l'existant)
                 if (!global.accounts) global.accounts = [];
@@ -708,8 +1226,8 @@ app.get('/api/auth/twitter/callback', async (req, res) => {
                 // Nettoyer les données temporaires
                 delete pendingOAuthTokens[oauth_token];
                 
-                // Redirection de succès
-                res.redirect('/?success=oauth1a_connected&username=' + encodeURIComponent(newAccount.username));
+                // Redirection de succès vers page dédiée
+                res.redirect('/oauth-success.html?success=oauth1a_connected&username=' + encodeURIComponent(newAccount.username));
                 
             } catch (error) {
                 console.error('[ERROR] OAuth 1.0a callback failed:', error);
@@ -731,7 +1249,33 @@ app.get('/api/auth/twitter/callback', async (req, res) => {
     }
 });
 
-// Route de callback OAuth 2.0 dédiée
+// Route de callback// OAuth 2.0 refresh token endpoint
+app.post('/api/oauth2/refresh-token', requireClientAuth, async (req, res) => {
+    try {
+        const { userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'User ID is required' });
+        }
+
+        const oauth2Manager = getOAuth2Manager();
+        const refreshedUser = await oauth2Manager.refreshUserToken(userId);
+        
+        res.json({
+            success: true,
+            message: 'Token refreshed successfully',
+            expiresAt: refreshedUser.expiresAt,
+            username: refreshedUser.username
+        });
+    } catch (error) {
+        console.error('[OAUTH2] Token refresh error:', error.message);
+        res.status(400).json({ 
+            error: error.message || 'Failed to refresh token'
+        });
+    }
+});
+
+// OAuth 2.0 callback handler
 app.get('/oauth2/callback', async (req, res) => {
     const { code, state, error } = req.query;
     
@@ -780,30 +1324,22 @@ app.get('/oauth2/callback', async (req, res) => {
         
         logToFile(`[OAUTH2] Account @${newUser.username} connected via OAuth 2.0`);
         
-        // Arrêter l'automation automatiquement lors de l'ajout d'un nouveau compte OAuth2
-        if (isAutomationEnabled) {
-            isAutomationEnabled = false;
-            automationActive = false;
-            logToFile(`[OAUTH2] Automation automatically stopped - Account @${newUser.username} added, please restart automation`);
-            console.log(`[OAUTH2] Automation stopped due to new account addition: @${newUser.username}`);
-        }
+        // Ne plus arrêter l'automation lors de l'ajout d'un compte
+        // L'automation peut continuer à fonctionner avec les nouveaux comptes
+        logToFile(`[OAUTH2] Account @${newUser.username} added - automation continues running`);
         
         // Redirection de succès avec message spécial pour nouvel compte
-        res.redirect('/?success=oauth2_connected&username=' + encodeURIComponent(newUser.username) + '&automation_stopped=true');
+        res.redirect('/oauth-success.html?success=oauth2_connected&username=' + encodeURIComponent(newUser.username) + '&automation_stopped=true');
         
     } catch (error) {
         console.error('[ERROR] OAuth 2.0 callback failed:', error);
         logToFile(`[OAUTH2] Callback error: ${error.message}`);
-        res.redirect('/?error=oauth2_callback_failed&message=' + encodeURIComponent(error.message));
+        res.redirect('/oauth-success.html?error=oauth2_callback_failed&message=' + encodeURIComponent(error.message));
     }
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/Content', express.static(path.join(__dirname, 'Content')));
-app.use(express.static(__dirname)); // Servir les fichiers HTML à la racine
-
 // Variables globales pour les images
-let replyImagesSettings = { enabled: false };
+let replyImagesSettings = { enabled: false, probability: 0.1 };
 const replyImagesSettingsFile = path.join(__dirname, 'reply-images-settings.json');
 
 // Charger les paramètres au démarrage
@@ -812,10 +1348,19 @@ function loadReplyImagesSettings() {
         if (fs.existsSync(replyImagesSettingsFile)) {
             const data = fs.readFileSync(replyImagesSettingsFile, 'utf8');
             replyImagesSettings = JSON.parse(data);
+            // Normalisation et valeurs par défaut
+            if (typeof replyImagesSettings.enabled !== 'boolean') {
+                replyImagesSettings.enabled = Boolean(replyImagesSettings.enabled);
+            }
+            if (typeof replyImagesSettings.probability !== 'number') {
+                replyImagesSettings.probability = 0.1;
+            }
+            // Bornage 0..1
+            replyImagesSettings.probability = Math.max(0, Math.min(1, replyImagesSettings.probability));
         }
     } catch (error) {
         console.error('[REPLY-IMAGES] Error loading settings:', error);
-        replyImagesSettings = { enabled: false };
+        replyImagesSettings = { enabled: false, probability: 0.1 };
     }
 }
 
@@ -827,34 +1372,16 @@ function saveReplyImagesSettings() {
         console.error('[REPLY-IMAGES] Error saving settings:', error);
     }
 }
-
 // Obtenir une image aléatoire
 function getRandomReplyImage() {
     try {
+        console.log('[REPLY-IMAGES] Getting random image...');
         const imagesDir = path.join(__dirname, 'reply-images');
-        if (!fs.existsSync(imagesDir)) return null;
+        console.log('[REPLY-IMAGES] Images directory:', imagesDir);
         
-        const files = fs.readdirSync(imagesDir).filter(file => {
-            const ext = path.extname(file).toLowerCase();
-            return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
-        });
-        
-        if (files.length === 0) return null;
-        
-        const randomFile = files[Math.floor(Math.random() * files.length)];
-        return path.join(imagesDir, randomFile);
-    } catch (error) {
-        console.error('[REPLY-IMAGES] Error getting random image:', error);
-        return null;
-    }
-}
-
-// API: Lister les images
-app.get('/api/reply-images', (req, res) => {
-    try {
-        const imagesDir = path.join(__dirname, 'reply-images');
         if (!fs.existsSync(imagesDir)) {
-            return res.json({ images: [] });
+            console.log('[REPLY-IMAGES] Images directory does not exist');
+            return null;
         }
         
         const files = fs.readdirSync(imagesDir).filter(file => {
@@ -862,21 +1389,80 @@ app.get('/api/reply-images', (req, res) => {
             return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
         });
         
-        const images = files.map(file => {
-            const filePath = path.join(imagesDir, file);
-            const stats = fs.statSync(filePath);
-            return {
-                filename: file,
-                size: stats.size,
-                uploadDate: stats.birthtime
-            };
-        });
+        console.log('[REPLY-IMAGES] Found image files:', files.length);
+        console.log('[REPLY-IMAGES] Files list:', files);
         
-        res.json({ images });
+        if (files.length === 0) {
+            console.log('[REPLY-IMAGES] No image files found');
+            return null;
+        }
+        
+        const randomFile = files[Math.floor(Math.random() * files.length)];
+        const fullPath = path.join(imagesDir, randomFile);
+        console.log('[REPLY-IMAGES] Selected random image:', randomFile);
+        console.log('[REPLY-IMAGES] Full path:', fullPath);
+        
+        return fullPath;
     } catch (error) {
-        console.error('[REPLY-IMAGES] Error listing images:', error);
-        res.status(500).json({ error: 'Failed to list images' });
+        console.error('[REPLY-IMAGES] CRITICAL ERROR getting random image:', error);
+        console.error('[REPLY-IMAGES] Stack trace:', error.stack);
+        console.error('[REPLY-IMAGES] Directory path attempted:', path.join(__dirname, 'reply-images'));
+        return null;
     }
+}
+
+// API: Paramètres des images (placé avant les routes dynamiques pour éviter le shadowing)
+app.get('/api/reply-images/settings', (req, res) => {
+    res.json(replyImagesSettings);
+});
+
+app.post('/api/reply-images/settings', (req, res) => {
+    try {
+        const { enabled, probability } = req.body;
+        if (typeof enabled !== 'undefined') {
+            replyImagesSettings.enabled = Boolean(enabled);
+        }
+        if (typeof probability !== 'undefined') {
+            const p = parseFloat(probability);
+            if (!Number.isNaN(p)) {
+                replyImagesSettings.probability = Math.max(0, Math.min(1, p));
+            }
+        }
+        saveReplyImagesSettings();
+
+        console.log(`[REPLY-IMAGES] Settings updated: enabled=${replyImagesSettings.enabled}, probability=${replyImagesSettings.probability}`);
+    res.json({ success: true, settings: replyImagesSettings });
+  } catch (error) {
+    console.error('[REPLY-IMAGES] CRITICAL ERROR updating settings:', error);
+    console.error('[REPLY-IMAGES] Stack trace:', error.stack);
+    console.error('[REPLY-IMAGES] Request body:', req.body);
+    res.status(500).json({ error: 'Failed to update settings', details: error.message });
+  }
+});
+
+// API: Lister les images (JSON)
+app.get('/api/reply-images', (req, res) => {
+  try {
+    const imagesDir = path.join(__dirname, 'reply-images');
+    if (!fs.existsSync(imagesDir)) {
+      return res.json({ images: [] });
+    }
+    const files = fs.readdirSync(imagesDir).filter(file => {
+      const ext = path.extname(file).toLowerCase();
+      return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
+    });
+    const images = files.map(file => {
+      const filePath = path.join(imagesDir, file);
+      const stats = fs.statSync(filePath);
+      return { filename: file, size: stats.size, uploadDate: stats.birthtime };
+    });
+    res.json({ images });
+  } catch (error) {
+    console.error('[REPLY-IMAGES] CRITICAL ERROR listing images:', error);
+    console.error('[REPLY-IMAGES] Stack trace:', error.stack);
+    console.error('[REPLY-IMAGES] Images directory path:', path.join(__dirname, 'reply-images'));
+    res.status(500).json({ error: 'Failed to list images', details: error.message });
+  }
 });
 
 // API: Servir les images
@@ -965,24 +1551,7 @@ app.delete('/api/reply-images/clear', (req, res) => {
     }
 });
 
-// API: Paramètres des images
-app.get('/api/reply-images/settings', (req, res) => {
-    res.json(replyImagesSettings);
-});
-
-app.post('/api/reply-images/settings', (req, res) => {
-    try {
-        const { enabled } = req.body;
-        replyImagesSettings.enabled = Boolean(enabled);
-        saveReplyImagesSettings();
-        
-        console.log(`[REPLY-IMAGES] Settings updated: enabled=${replyImagesSettings.enabled}`);
-        res.json({ success: true, settings: replyImagesSettings });
-    } catch (error) {
-        console.error('[REPLY-IMAGES] Error updating settings:', error);
-        res.status(500).json({ error: 'Failed to update settings' });
-    }
-});
+const session = require('express-session');
 
 app.use(session({
     secret: process.env.SESSION_SECRET || 'a_very_secure_secret_for_session',
@@ -1040,12 +1609,36 @@ function migrateGlobalQuotasToPerAccount() {
     return true;
 }
 
-// Variables globales
+// Variables globales pour le serveur
 let accounts = [];
 let watchAccounts = []; // Liste des comptes à surveiller
+
+// Charger les comptes à surveiller au démarrage
+function loadWatchAccountsOnStartup() {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const watchAccountsPath = path.join(__dirname, 'watch-accounts.json');
+        
+        if (fs.existsSync(watchAccountsPath)) {
+            const fileData = JSON.parse(fs.readFileSync(watchAccountsPath, 'utf8'));
+            watchAccounts = Array.isArray(fileData) ? fileData : (fileData.accounts || []);
+            console.log(`[STARTUP] Watch accounts loaded from JSON: ${watchAccounts.length} comptes`);
+            console.log(`[STARTUP] First 5 accounts:`, watchAccounts.slice(0, 5));
+        } else {
+            console.log('[STARTUP] No watch-accounts.json file found');
+            watchAccounts = [];
+        }
+    } catch (error) {
+        console.error('[STARTUP] Error loading watch accounts:', error.message);
+        watchAccounts = [];
+    }
+}
 let isAutomationEnabled = false;
 let automationActive = false;
-let automationInterval = null;
+let automationInterval;
+let lastHeartbeat = null;
+let lastSuccessCache = null; // Cache persistant pour la dernière action réussie
 let lastTweetId = null;
 let performedActionsDB = {};
 // ✅ Ancien système de quotas globaux supprimé - utilisation du nouveau système par compte
@@ -1074,7 +1667,7 @@ if (!allAccountQuotas || !allAccountQuotas.accounts || Object.keys(allAccountQuo
 let rateLimitState = {};
 const mutedAccounts = new Map();
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync(process.env.ADMIN_PASSWORD || 'admin123', 10);
+// const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcrypt.hashSync(process.env.ADMIN_PASSWORD || 'admin123', 10);
 const ACTIONS_DB_FILE = path.join(__dirname, 'performed-actions.json');
 const PERSISTENT_HISTORY_FILE = path.join(__dirname, 'actions-history-persistent.json');
 
@@ -1195,10 +1788,33 @@ function saveToPersistentHistory(tweetId, accountId, actionType) {
     }
 }
 
+// 🚀 CACHE DES CLIENTS TWITTER - Optimisation OAuth2
+const clientCache = new Map();
+const CLIENT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+let searchAccountIndex = 0; // Index pour rotation des comptes de recherche
+
+// Fonction pour nettoyer le cache périodiquement
+setInterval(() => {
+    const now = Date.now();
+    for (const [accountId, cached] of clientCache.entries()) {
+        if (now - cached.timestamp > CLIENT_CACHE_TTL) {
+            clientCache.delete(accountId);
+            console.log(`[CACHE] Expired client cache for account ${accountId}`);
+        }
+    }
+}, 5 * 60 * 1000); // Nettoyage toutes les 5 minutes
+
 // Fonction HYBRIDE pour obtenir un client Twitter authentifié par ID de compte (OAuth 1.0a + OAuth 2.0)
-// MISE À JOUR: Gestion automatique du refresh OAuth2
-async function getRwClientById(accountId) {
-    console.log(`[DEBUG] getRwClientById called for account: ${accountId}`);
+// MISE À JOUR: Cache + rotation + validation conditionnelle
+async function getRwClientById(accountId, skipValidation = false) {
+    console.log(`[DEBUG] getRwClientById called for account: ${accountId}, skipValidation: ${skipValidation}`);
+    
+    // 🚀 ÉTAPE 0: Vérifier le cache d'abord
+    const cached = clientCache.get(accountId);
+    if (cached && Date.now() - cached.timestamp < CLIENT_CACHE_TTL) {
+        console.log(`[CACHE] Using cached client for account ${accountId}`);
+        return cached.client;
+    }
     
     // 🔍 ÉTAPE 1: Chercher dans TOUS les comptes connectés (OAuth 1.0a + OAuth 2.0)
     const allConnectedAccounts = getAllConnectedAccounts();
@@ -1223,8 +1839,8 @@ async function getRwClientById(accountId) {
         // === OAUTH 2.0 : Utiliser le gestionnaire OAuth2 avec refresh automatique ===
         console.log(`[DEBUG] Creating OAuth 2.0 client for @${account.username} with auto-refresh`);
         try {
-            // Utiliser le gestionnaire OAuth2 qui gère automatiquement le refresh
-            client = await oauth2Manager.getClientForUser(accountId);
+            // Utiliser le gestionnaire OAuth2 avec validation conditionnelle
+            client = await oauth2Manager.getClientForUser(accountId, skipValidation);
         } catch (error) {
             const errorCode = error.code || 'UNKNOWN';
             
@@ -1238,6 +1854,25 @@ async function getRwClientById(accountId) {
                 throw rateLimitError;
             } else {
                 console.error(`[ERROR] Failed to get OAuth2 client for @${account.username}: ${error.message}`);
+                // Diagnostics supplémentaires depuis le store OAuth2
+                try {
+                    const u = (oauth2Manager && oauth2Manager.persistentUsers && oauth2Manager.persistentUsers.get(accountId)) || null;
+                    if (u) {
+                        const diag = {
+                            requiresReconnection: !!u.requiresReconnection,
+                            expiresAt: u.expiresAt,
+                            lastRefresh: u.lastRefresh,
+                            lastValidationError: u.lastValidationError || null,
+                            scopesGranted: u.scopesGranted,
+                            criticalScopesOk: u.criticalScopesOk
+                        };
+                        console.error(`[OAUTH2][DIAG] @${account.username} -> ${JSON.stringify(diag)}`);
+                    } else {
+                        console.error(`[OAUTH2][DIAG] No persistent user found for ${accountId}`);
+                    }
+                } catch (diagErr) {
+                    console.error(`[OAUTH2][DIAG] Unable to read diagnostics for ${accountId}: ${diagErr.message}`);
+                }
                 throw new Error(`OAuth2 client creation failed for @${account.username}: ${error.message}`);
             }
         }
@@ -1253,12 +1888,22 @@ async function getRwClientById(accountId) {
     }
     
     console.log(`[DEBUG] Created ${account.authMethod || 'oauth1a'} Twitter client for @${account.username}`);
-    return client.readWrite;
+    
+    // 🚀 MISE EN CACHE du client créé
+    const rwClient = client.readWrite;
+    clientCache.set(accountId, {
+        client: rwClient,
+        timestamp: Date.now(),
+        username: account.username
+    });
+    console.log(`[CACHE] Cached client for @${account.username} (TTL: ${CLIENT_CACHE_TTL/1000/60}min)`);
+    
+    return rwClient;
 }
 
 // Wrapper pour le service AI
 async function generateUniqueAIComments(tweets, context) {
-    return generateAICommentsFromService(tweets, context, process.env.PERPLEXITY_API_KEY);
+    return getAI().generateAICommentsFromService(tweets, context, process.env.PERPLEXITY_API_KEY);
 }
 
 // Test de connectivité Twitter au démarrage
@@ -1289,30 +1934,30 @@ async function testTwitterConnectivity() {
 // Fonction utilitaire pour obtenir les actions récentes d'un compte
 function getRecentActionsForAccount(accountId, timeWindowMs) {
     try {
-        const { getFilteredLogsFromFile } = require('./services/logs');
-        const logs = getFilteredLogsFromFile(100); // Récupérer les 100 derniers logs
-        
-        if (!logs || !Array.isArray(logs)) {
+        // Utiliser le service unifié de logs
+        const result = getFilteredLogsFromFile(200); // Récupérer les 200 derniers logs filtrés
+        const logs = Array.isArray(result) ? result : (result && Array.isArray(result.logs) ? result.logs : []);
+
+        if (!logs || logs.length === 0) {
             return [];
         }
-        
+
         const now = Date.now();
         const cutoffTime = now - timeWindowMs;
-        
-        // Filtrer les actions récentes pour ce compte
+
+        // Filtrer les actions récentes pour ce compte (le champ standardisé est `account`)
         const recentActions = logs.filter(log => {
-            if (!log.timestamp || !log.actingAccount) return false;
-            
+            if (!log.timestamp || !log.account) return false;
+
             const logTime = new Date(log.timestamp).getTime();
-            if (logTime < cutoffTime) return false;
-            
-            // Vérifier si l'action concerne ce compte
-            const logAccount = log.actingAccount.toLowerCase();
-            const targetAccount = accountId.toLowerCase();
-            
+            if (isNaN(logTime) || logTime < cutoffTime) return false;
+
+            const logAccount = String(log.account).toLowerCase();
+            const targetAccount = String(accountId).toLowerCase();
+
             return logAccount === targetAccount || logAccount.includes(targetAccount);
         });
-        
+
         return recentActions;
     } catch (error) {
         console.error(`[STATUS] Erreur lors de la récupération des actions récentes pour ${accountId}:`, error);
@@ -1402,69 +2047,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// API pour l'authentification client (utilisée par access.html)
-app.post('/api/client-auth', async (req, res) => {
-    try {
-        const { clientId, password } = req.body;
-        
-        if (!clientId || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Client ID et mot de passe requis'
-            });
-        }
-        
-        // Vérifier si le client existe
-        const client = authorizedClients[clientId];
-        if (!client) {
-            logToFile(`[ACCESS] Tentative de connexion avec ID client invalide: ${clientId}`);
-            return res.status(401).json({
-                success: false,
-                message: 'Identifiants invalides'
-            });
-        }
-        
-        // Vérifier le mot de passe
-        if (client.password !== password) {
-            logToFile(`[ACCESS] Tentative de connexion avec mot de passe incorrect pour: ${clientId}`);
-            return res.status(401).json({
-                success: false,
-                message: 'Identifiants invalides'
-            });
-        }
-        
-        // Générer un token de session
-        const token = Buffer.from(`${clientId}:${Date.now()}`).toString('base64');
-        
-        // Stocker la session
-        req.session.clientId = clientId;
-        req.session.clientName = client.name;
-        req.session.permissions = client.permissions;
-        req.session.authenticated = true;
-        req.session.loginTime = new Date().toISOString();
-        
-        logToFile(`[ACCESS] Connexion client réussie: ${clientId} (${client.name})`);
-        
-        res.json({
-            success: true,
-            token: token,
-            client: {
-                id: clientId,
-                name: client.name,
-                permissions: client.permissions
-            },
-            message: 'Accès autorisé'
-        });
-        
-    } catch (error) {
-        console.error('Erreur lors de l\'authentification client:', error);
-        logToFile(`[ACCESS] Erreur d'authentification client: ${error.message}`);
-        res.status(500).json({
-            success: false,
-            message: 'Erreur interne du serveur'
-        });
-    }
-});
+// API pour l'authentification client (utilisée par access.html) - SUPPRIMÉE (dupliquée)
 
 // Fonction utilitaire pour formater le temps écoulé
 function formatTimeAgo(date) {
@@ -1481,9 +2064,9 @@ function formatTimeAgo(date) {
 }
 
 // Route pour obtenir les warnings de quotas
-app.get('/api/quota-warnings', async (req, res) => {
+app.get('/api/quota-warnings', requireClientAuth, async (req, res) => {
     try {
-        const { getFilteredLogsFromFile } = require('./services/logs-optimized');
+        // Utiliser le service unifié de logs
         
         // Récupérer les logs récents (dernières 100 entrées)
         const logsResult = getFilteredLogsFromFile(100, 0);
@@ -1541,34 +2124,8 @@ app.get('/api/quota-warnings', async (req, res) => {
     }
 });
 
-// Route pour obtenir la liste des comptes
-app.get('/api/accounts', async (req, res) => {
-    try {
-        const allAccounts = getAllConnectedAccounts();
-        res.json(allAccounts);
-    } catch (error) {
-        console.error('Erreur lors de la récupération des comptes:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
-    }
-});
-
-// Route pour l'historique des actions
-app.get('/api/actions-history', async (req, res) => {
-    try {
-        const performedActions = JSON.parse(fs.readFileSync('./performed-actions.json', 'utf8'));
-        
-        // Optionnel : enrichir avec des données de tweets si disponibles
-        const tweetsData = {};
-        
-        res.json({
-            performedActions,
-            tweetsData
-        });
-    } catch (error) {
-        console.error('Erreur lors de la récupération de l\'historique:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
-    }
-});
+// Route pour obtenir la liste des comptes - SUPPRIMÉE (doublon avec ligne 2632)
+// ROUTE SUPPRIMÉE - Dupliquée avec celle ligne 3826
 
 // Route pour obtenir les données du dashboard
 app.get('/api/dashboard-data', async (req, res) => {
@@ -1662,77 +2219,73 @@ app.get('/api/dashboard-data', async (req, res) => {
         const activeAccounts = sharedQuotaStats.activeAccounts;
         
         const enrichedAccounts = activeAccounts.map(account => {
-            const accountId = account.username; // L'ID est le username
             const now = Date.now();
             
-            // Vérifier si le compte est en pause (muted)
+            // Résolution des identifiants pour cohérence des clés
+            const usernameKey = account.username;
+            let displayName = usernameKey;
+            
+            // Chercher dans les comptes OAuth2 et OAuth1 pour obtenir l'ID canonique
+            const oauth2Users = oauth2Manager.getAllUsers();
+            const oauth2User = oauth2Users.find(user => user.id === usernameKey || user.username === usernameKey);
+            let oauth1Account = null;
+            if (global.accounts) {
+                oauth1Account = global.accounts.find(acc => acc.id === usernameKey || acc.username === usernameKey);
+            }
+            if (oauth2User && oauth2User.username) {
+                displayName = oauth2User.username;
+            } else if (oauth1Account && oauth1Account.username) {
+                displayName = oauth1Account.username;
+            }
+            
+            // Clé mute côté backend: ID du compte si disponible (oauth2 > oauth1), sinon fallback username
+            const muteKey = (oauth2User && oauth2User.id)
+                ? oauth2User.id
+                : (oauth1Account && oauth1Account.id)
+                    ? oauth1Account.id
+                    : (account.id || usernameKey);
+            // Clé logs: username affiché (displayName)
+            const logKey = displayName || usernameKey;
+            
+            // Statut par défaut
             let status = {
                 state: 'active', // 'active', 'paused', 'working'
                 reason: null,
                 until: null
             };
             
-            // Vérifier les comptes en sourdine (mutedAccounts)
-            if (mutedAccounts && mutedAccounts.has && mutedAccounts.has(accountId)) {
-                const muteUntil = mutedAccounts.get(accountId);
-                if (muteUntil > now) {
+            // Vérifier les comptes en sourdine (mutedAccounts) — prioritaire
+            if (mutedAccounts && typeof mutedAccounts.has === 'function' && mutedAccounts.has(muteKey)) {
+                const muteUntil = mutedAccounts.get(muteKey);
+                if (muteUntil && muteUntil > now) {
                     status.state = 'paused';
                     status.until = muteUntil;
-                    
-                    // Déterminer la raison de la pause
-                    const remainingTime = Math.ceil((muteUntil - now) / (1000 * 60)); // en minutes
-                    if (remainingTime > 60) {
-                        status.reason = `Rate limit - Pause ${Math.ceil(remainingTime / 60)}h`;
-                    } else {
-                        status.reason = `Rate limit - Pause ${remainingTime}min`;
-                    }
+                    const remainingTime = Math.ceil((muteUntil - now) / (1000 * 60)); // minutes
+                    status.reason = remainingTime > 60
+                        ? `Rate limit - Pause ${Math.ceil(remainingTime / 60)}h`
+                        : `Rate limit - Pause ${remainingTime}min`;
                 }
             }
             
-            // Si le compte n'est pas en pause, vérifier s'il travaille actuellement
+            // Si pas muté et automation active, vérifier l'activité récente
             if (status.state === 'active' && isAutomationEnabled) {
-                // Vérifier si le compte a des actions récentes (dernières 3 minutes)
-                const recentActions = getRecentActionsForAccount(accountId, 3 * 60 * 1000);
+                const recentActions = getRecentActionsForAccount(logKey, 3 * 60 * 1000);
                 if (recentActions && recentActions.length > 0) {
                     status.state = 'working';
                     const lastAction = recentActions[0];
                     const timeSinceLastAction = Math.round((Date.now() - new Date(lastAction.timestamp).getTime()) / 1000);
                     status.reason = `En action - ${recentActions.length} action(s) (il y a ${timeSinceLastAction}s)`;
-                } else {
-                    // Vérifier si l'automation est en cours de scan
-                    if (global.isAutomationScanning) {
-                        status.state = 'working';
-                        status.reason = 'Recherche de nouveaux tweets...';
-                    }
-                }
-            } else if (!isAutomationEnabled) {
-                // Si l'automation est désactivée, le compte est en pause
-                status.state = 'paused';
-                status.reason = 'Automation désactivée';
-            }
-            
-            // Obtenir le vrai pseudo (nom d'utilisateur lisible)
-            let displayName = account.username;
-            
-            // Chercher dans les comptes OAuth2 pour le vrai pseudo
-            const oauth2Users = oauth2Manager.getAllUsers();
-            const oauth2User = oauth2Users.find(user => user.id === accountId || user.username === accountId);
-            if (oauth2User && oauth2User.username) {
-                displayName = oauth2User.username;
-            }
-            
-            // Chercher dans les comptes OAuth 1.0a
-            if (global.accounts) {
-                const oauth1Account = global.accounts.find(acc => acc.id === accountId || acc.username === accountId);
-                if (oauth1Account && oauth1Account.username) {
-                    displayName = oauth1Account.username;
+                } else if (global.isAutomationScanning) {
+                    status.state = 'working';
+                    status.reason = 'Recherche de nouveaux tweets...';
                 }
             }
+            // NOTE: On ne force plus 'paused' quand l'automation est désactivée pour éviter la confusion
             
             return {
                 ...account,
-                displayName: displayName,
-                status: status,
+                displayName,
+                status,
                 // S'assurer que les propriétés de quotas sont incluses
                 quotaRemaining: account.quotaRemaining !== undefined ? account.quotaRemaining : 0,
                 dailyRemaining: account.dailyRemaining !== undefined ? account.dailyRemaining : 0
@@ -1768,7 +2321,7 @@ app.get('/api/dashboard-data', async (req, res) => {
         };
         
         try {
-            const { getFilteredLogsFromFile } = require('./services/logs');
+            // Utiliser le service unifié de logs
             const logs = getFilteredLogsFromFile(1000); // Récupérer plus de logs pour les stats
             
             if (logs && Array.isArray(logs)) {
@@ -1871,7 +2424,7 @@ app.get('/api/token-settings', (req, res) => {
         console.log('[API] /api/token-settings - Récupération des paramètres du token');
         
         // Charger les paramètres du token depuis le service
-        const tokenSettings = loadTokenSettingsFromService();
+        const tokenSettings = getTokenSettings().loadTokenSettingsFromService();
         
         console.log('[API] Token settings loaded:', {
             hasSymbol: !!tokenSettings.tokenSymbol,
@@ -2058,7 +2611,7 @@ app.post('/api/set-action-limit', (req, res) => {
 });
 
 // 🎯 NOUVELLE API UNIFIÉE : Statistiques du dashboard avec le système unifié
-app.get('/api/dashboard-stats', (req, res) => {
+app.get('/api/dashboard-stats', async (req, res) => {
     try {
         console.log('[API] /api/dashboard-stats - Début avec système unifié');
         
@@ -2087,19 +2640,27 @@ app.get('/api/dashboard-stats', (req, res) => {
             console.log('[API] ERREUR: quotaStats est null/undefined');
         }
         
-        // Utiliser le cache persistant pour les statistiques d'actions
-        const { getStats, recalculateFromLogs } = require('./services/actions-stats');
+        // Tentative de récupération depuis le cache Redis (si disponible)
+        try {
+            const cached = await cache.getCachedDashboardStats();
+            if (cached) {
+                return res.json({ ...cached, cached: true });
+            }
+        } catch (_) { /* mode dégradé sans cache */ }
+
+        // Utiliser le cache persistant applicatif pour les statistiques d'actions
+        const actionsStatsService = getActionsStats();
         
         // Obtenir les statistiques depuis le cache persistant
-        let actionStats = getStats();
+        let actionStats = actionsStatsService.getStats();
         
-        // Si c'est le premier démarrage ou si les stats semblent vides, recalculer depuis les logs
+        // Si les stats sont vides (premier démarrage), recalculer depuis les logs
         if (actionStats.allTime.total === 0) {
             console.log('[API] Première utilisation ou stats vides, recalcul depuis les logs...');
-            const { getFilteredLogsFromFile } = require('./services/logs-optimized');
+            // Utiliser le service unifié de logs
             const logs = getFilteredLogsFromFile(5000, 0); // Plus de logs pour le recalcul initial
-            recalculateFromLogs(logs);
-            actionStats = getStats();
+            actionsStatsService.recalculateFromLogs(logs);
+            actionStats = actionsStatsService.getStats();
         }
         
         // Extraire les données pour compatibilité avec l'ancien format
@@ -2136,6 +2697,8 @@ app.get('/api/dashboard-stats', (req, res) => {
             }))
         };
         
+        // Mettre en cache pour des appels rapprochés (TTL court)
+        try { await cache.cacheDashboardStats(response, 30); } catch (_) {}
         res.json(response);
         
     } catch (error) {
@@ -2192,17 +2755,59 @@ app.post('/api/automation-status', (req, res) => {
         console.log('[DEBUG] AVANT TOGGLE isAutomationEnabled:', isAutomationEnabled);
         isAutomationEnabled = !isAutomationEnabled;
         console.log(`[WORKFLOW] Nouvelle valeur isAutomationEnabled: ${isAutomationEnabled}`);
-        logSystemAction(`Automation status set to: ${isAutomationEnabled}`);
+        getAutomation().logSystemAction(`Automation status set to: ${isAutomationEnabled}`);
         if (isAutomationEnabled) {
             console.log('[WORKFLOW] Activation de l\'automatisation : préparation des dépendances et lancement du scan');
         } else {
             console.log('[WORKFLOW] Désactivation de l\'automatisation');
         }
         if (isAutomationEnabled && !automationActive) {
-            // Charger dynamiquement les AI Token Settings depuis le fichier à chaque lancement
-            const { loadTokenSettings } = require('./services/tokenSettings');
-            const aiTokenSettings = loadTokenSettings();
+            // Charger dynamiquement les AI Token Settings depuis le service (inclut potentiellement watchAccounts)
+            const aiTokenSettings = getTokenSettings().loadTokenSettingsFromService();
+
+            // Normaliser watchAccounts à partir des différentes sources (priorité: fichier JSON > variable globale > tokenSettings)
+            let finalWatchAccounts = [];
             
+            // 1. Priorité: Charger depuis watch-accounts.json
+            try {
+                const fs = require('fs');
+                const watchAccountsPath = path.join(__dirname, 'watch-accounts.json');
+                if (fs.existsSync(watchAccountsPath)) {
+                    const fileData = JSON.parse(fs.readFileSync(watchAccountsPath, 'utf8'));
+                    finalWatchAccounts = Array.isArray(fileData) ? fileData : (fileData.accounts || []);
+                    logToFile(`[WATCH][FILE] Chargé depuis watch-accounts.json: ${finalWatchAccounts.length} comptes`);
+                }
+            } catch (error) {
+                logToFile(`[WATCH][FILE] Erreur lecture fichier: ${error.message}`);
+            }
+            
+            // 2. Fallback: Variable globale
+            if (finalWatchAccounts.length === 0) {
+                const globalWatch = Array.isArray(watchAccounts) ? watchAccounts : [];
+                finalWatchAccounts = [...globalWatch];
+                logToFile(`[WATCH][GLOBAL] Variable globale watchAccounts: ${finalWatchAccounts.length} comptes`);
+            }
+            
+            // 3. Fallback: Token settings
+            if (finalWatchAccounts.length === 0) {
+                const tsWatch = aiTokenSettings && aiTokenSettings.watchAccounts ? aiTokenSettings.watchAccounts : [];
+                finalWatchAccounts = Array.isArray(tsWatch) ? tsWatch : Object.values(tsWatch || {});
+                logToFile(`[WATCH][TOKENSETTINGS] aiTokenSettings.watchAccounts: ${finalWatchAccounts.length} comptes`);
+            }
+            
+            const mergedRaw = finalWatchAccounts;
+            const normalizedWatchAccounts = Array.from(new Set(
+                mergedRaw
+                    .map(item => {
+                        let p = item;
+                        if (item && typeof item === 'object') p = item.pseudo || item.username || item.name || '';
+                        if (typeof p !== 'string') return '';
+                        return p.trim().replace(/^@/, '').replace(/[\,\s]+/g, '');
+                    })
+                    .filter(Boolean)
+            ));
+            logToFile(`[WATCH][NORMALIZED] ${normalizedWatchAccounts.length} comptes: ${normalizedWatchAccounts.map(u => '@' + u).join(', ')}`);
+
             // 🔧 CORRECTION OAUTH 2.0: Utiliser TOUS les comptes connectés (OAuth 1.0a + OAuth 2.0)
             const allConnectedAccounts = getAllConnectedAccounts();
             console.log(`[DEBUG][AUTOMATION] Comptes injectés dans l'automatisation: ${allConnectedAccounts.length}`);
@@ -2214,8 +2819,8 @@ app.post('/api/automation-status', (req, res) => {
             const enabledActions = ['like', 'retweet', 'reply'];
             
             const dependencies = {
-                getAllConnectedAccounts,
-                watchAccounts,
+                getAllConnectedAccounts: () => allConnectedAccounts,
+                watchAccounts: normalizedWatchAccounts,
                 lastTweetId,
                 isAutomationEnabled,
                 automationActive,
@@ -2225,9 +2830,11 @@ app.post('/api/automation-status', (req, res) => {
                 generateUniqueAIComments,
                 markActionAsPerformed,
                 hasActionBeenPerformed,
+                searchAccountIndex: searchAccountIndex || 0,
+                updateSearchAccountIndex: (newIndex) => { searchAccountIndex = newIndex; },
                 logSystemAction: logToFile,
-                pushLiveLog: (msg) => pushLiveLog(msg),
-                randomDelay,
+                pushLiveLog: (msg) => getAutomation().pushLiveLog(msg),
+                randomDelay: getAutomation().randomDelay,
                 logToFile,
                 // Système de quotas partagés unifié
                 canPerformActionForAccount,
@@ -2240,42 +2847,174 @@ app.post('/api/automation-status', (req, res) => {
                 aiTokenSettings: aiTokenSettings
             };
 
-            console.log('[WORKFLOW] Lancement de runAutomationScan (démarrage du scan automatique)');
+            console.log('[WORKFLOW] Lancement immédiat du scan (sans warm-up)');
             
-            // Arrêter l'ancien polling s'il existe
+            // Arrêter tout ancien intervalle
             if (automationInterval) {
                 clearInterval(automationInterval);
                 automationInterval = null;
             }
+            serverTimers.clearInterval('automation_poll');
+
+            // Lecture de l'intervalle périodique depuis l'env (utilisé uniquement après le premier scan)
+            const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || '1800000', 10); // 30 minutes par défaut
+
+            // 1) Exécution immédiate au toggle ON avec timeout de sécurité
+            automationActive = true;
+            const scanStartTime = Date.now();
+            logToFile(`[AUTOMATION] Démarrage du scan immédiat avec timeout de 5 minutes...`);
             
-            // Lancer le premier scan immédiatement
-            runAutomationScan({ ...dependencies, enabledActions, mutedAccounts });
-            
-            // Démarrer le polling automatique toutes les 2 minutes
-            automationInterval = setInterval(async () => {
-                if (isAutomationEnabled) {
-                    console.log('[POLLING] Lancement automatique d\'un nouveau scan');
-                    try {
-                        await runAutomationScan({ ...dependencies, enabledActions, mutedAccounts });
-                    } catch (error) {
-                        console.error('[POLLING] Erreur lors du scan automatique:', error);
-                        logToFile(`[POLLING] Erreur scan automatique: ${error.message}`);
-                    }
-                } else {
-                    console.log('[POLLING] Automation désactivée, arrêt du polling');
-                    clearInterval(automationInterval);
-                    automationInterval = null;
+            // Timeout de sécurité pour éviter les scans bloqués
+            const scanTimeout = setTimeout(() => {
+                if (automationActive) {
+                    logToFile(`[TIMEOUT] Scan bloqué détecté après 5 minutes - Reset forcé`);
+                    automationActive = false;
                 }
-            }, 600000); // 10 minutes - Optimisation rate limits API
+            }, 5 * 60 * 1000); // 5 minutes
             
-            logToFile('[POLLING] Système de polling automatique démarré (10min intervals)');
+            // Exécuter le scan de manière asynchrone mais non-bloquante
+            (async () => {
+                try {
+                    const result = await getAutomation().runAutomationScan({
+                        getAllConnectedAccounts: () => allConnectedAccounts,
+                        watchAccounts: normalizedWatchAccounts,
+                        lastTweetId,
+                        isAutomationEnabled,
+                        automationActive,
+                        rateLimitState,
+                        performedActionsDB,
+                        getRwClientById,
+                        generateUniqueAIComments,
+                        markActionAsPerformed,
+                        hasActionBeenPerformed,
+                        searchAccountIndex: searchAccountIndex || 0,
+                        updateSearchAccountIndex: (newIndex) => { searchAccountIndex = newIndex; },
+                        logSystemAction: logToFile,
+                        pushLiveLog: (msg) => getAutomation().pushLiveLog(msg),
+                        randomDelay: getAutomation().randomDelay,
+                        logToFile,
+                        canPerformActionForAccount,
+                        consumeActionForAccount,
+                        calculateActionsLeftForAccount,
+                        calculateDailyQuotasForAccount,
+                        consumeSharedAction,
+                        getSharedQuotaStats,
+                        enabledActions,
+                        mutedAccounts,
+                        aiTokenSettings: aiTokenSettings
+                    });
+                    
+                    // Nettoyer le timeout
+                    clearTimeout(scanTimeout);
+                    
+                    // Mettre à jour automationActive selon le résultat du scan
+                    automationActive = result && result.automationActive !== undefined ? result.automationActive : false;
+                    const scanDuration = Math.round((Date.now() - scanStartTime) / 1000);
+                    logToFile(`[AUTOMATION] Scan immédiat terminé en ${scanDuration}s, automationActive: ${automationActive}`);
+                } catch (error) {
+                    clearTimeout(scanTimeout);
+                    console.error('[AUTOMATION] Erreur lors du scan immédiat:', error);
+                    logToFile(`[AUTOMATION] Erreur scan immédiat: ${error.message}`);
+                    automationActive = false;
+                }
+            })();
+
+            // 2) Re-scans périodiques uniquement si POLL_INTERVAL_MS > 0
+            if (POLL_INTERVAL_MS > 0) {
+                logToFile(`[POLLING] Polling activé toutes ${Math.round(POLL_INTERVAL_MS/1000)}s (sans exécution immédiate)`);
+                serverTimers.setInterval('automation_poll', async () => {
+                    if (!isAutomationEnabled) {
+                        serverTimers.clearInterval('automation_poll');
+                        return;
+                    }
+                    if (automationActive) {
+                        logToFile(`[POLLING] Scan déjà en cours, tick ignoré`);
+                        return;
+                    }
+                    
+                    logToFile(`[POLLING] Démarrage scan périodique...`);
+                    // Recharger les settings et recalculer la liste normalisée à chaud
+                    const aiTs = getTokenSettings().loadTokenSettingsFromService();
+                    const legacyWatch2 = Array.isArray(watchAccounts) ? watchAccounts : [];
+                    const tsWatch2 = aiTs && aiTs.watchAccounts ? aiTs.watchAccounts : [];
+                    const mergedRaw2 = Array.isArray(tsWatch2)
+                        ? [...tsWatch2, ...legacyWatch2]
+                        : [...Object.values(tsWatch2 || {}), ...legacyWatch2];
+                    const normalizedWatch2 = Array.from(new Set(
+                        mergedRaw2
+                            .map(item => {
+                                let p = item;
+                                if (item && typeof item === 'object') p = item.pseudo || item.username || item.name || '';
+                                if (typeof p !== 'string') return '';
+                                return p.trim().replace(/^@/, '').replace(/[\,\s]+/g, '');
+                            })
+                            .filter(Boolean)
+                    ));
+                    logToFile(`[WATCH][POLL][NORMALIZED] ${normalizedWatch2.length} comptes: ${normalizedWatch2.map(u => '@' + u).join(', ')}`);
+                    
+                    automationActive = true;
+                    const pollScanStartTime = Date.now();
+                    
+                    // Timeout de sécurité pour les scans périodiques
+                    const pollTimeout = setTimeout(() => {
+                        if (automationActive) {
+                            logToFile(`[TIMEOUT] Scan périodique bloqué après 10 minutes - Reset forcé`);
+                            automationActive = false;
+                        }
+                    }, 10 * 60 * 1000); // 10 minutes pour les scans périodiques
+                    
+                    try {
+                        await getAutomation().runAutomationScan({
+                            getAllConnectedAccounts: () => allConnectedAccounts,
+                            watchAccounts: normalizedWatch2,
+                            lastTweetId,
+                            isAutomationEnabled,
+                            automationActive,
+                            rateLimitState,
+                            performedActionsDB,
+                            getRwClientById,
+                            generateUniqueAIComments,
+                            markActionAsPerformed,
+                            hasActionBeenPerformed,
+                            searchAccountIndex: searchAccountIndex || 0,
+                            updateSearchAccountIndex: (newIndex) => { searchAccountIndex = newIndex; },
+                            logSystemAction: logToFile,
+                            pushLiveLog: (msg) => getAutomation().pushLiveLog(msg),
+                            randomDelay: getAutomation().randomDelay,
+                            logToFile,
+                            canPerformActionForAccount,
+                            consumeActionForAccount,
+                            calculateActionsLeftForAccount,
+                            calculateDailyQuotasForAccount,
+                            consumeSharedAction,
+                            getSharedQuotaStats,
+                            enabledActions,
+                            mutedAccounts,
+                            aiTokenSettings: aiTs
+                        });
+                        
+                        const pollScanDuration = Math.round((Date.now() - pollScanStartTime) / 1000);
+                        logToFile(`[POLLING] Scan périodique terminé en ${pollScanDuration}s`);
+                    } catch (e) {
+                        console.error('[POLLING] Erreur lors du scan périodique:', e);
+                        logToFile(`[POLLING] Erreur scan périodique: ${e.message}`);
+                    } finally {
+                        clearTimeout(pollTimeout);
+                        automationActive = false;
+                        logToFile(`[POLLING] automationActive remis à false`);
+                    }
+                }, POLL_INTERVAL_MS, { unref: true });
+            } else {
+                logToFile('[POLLING] Aucun polling périodique (POLL_INTERVAL_MS=0), uniquement l’exécution immédiate');
+            }
         } else {
             // Arrêter le polling quand l'automation est désactivée
             if (automationInterval) {
                 clearInterval(automationInterval);
                 automationInterval = null;
-                logToFile('[POLLING] Système de polling automatique arrêté');
             }
+            serverTimers.clearInterval('automation_poll');
+            logToFile('[POLLING] Système de polling automatique arrêté');
         }
         console.log('[WORKFLOW] Réponse envoyée au frontend:', { isAutomationEnabled });
         res.json({ isAutomationEnabled });
@@ -2299,6 +3038,17 @@ app.post('/api/watch-accounts', (req, res) => {
             return res.status(400).json({ error: 'Username already exists in watch list' });
         }
         watchAccounts.push(username);
+        
+        // Sauvegarder dans le fichier JSON
+        try {
+            const fs = require('fs');
+            const watchAccountsPath = path.join(__dirname, 'watch-accounts.json');
+            fs.writeFileSync(watchAccountsPath, JSON.stringify(watchAccounts, null, 2), 'utf8');
+            logToFile(`[WATCH] Fichier watch-accounts.json mis à jour avec ${watchAccounts.length} comptes`);
+        } catch (error) {
+            logToFile(`[WATCH] Erreur sauvegarde fichier: ${error.message}`);
+        }
+        
         logToFile(`[WATCH] Added @${username} to watch list.`);
         return res.status(201).json({ success: true });
     }
@@ -2314,6 +3064,17 @@ app.post('/api/watch-accounts', (req, res) => {
         const oldList = [...watchAccounts];
         watchAccounts.length = 0;
         watchAccounts.push(...cleanList);
+        
+        // Sauvegarder dans le fichier JSON
+        try {
+            const fs = require('fs');
+            const watchAccountsPath = path.join(__dirname, 'watch-accounts.json');
+            fs.writeFileSync(watchAccountsPath, JSON.stringify(cleanList, null, 2), 'utf8');
+            logToFile(`[WATCH] Fichier watch-accounts.json mis à jour avec ${cleanList.length} comptes`);
+        } catch (error) {
+            logToFile(`[WATCH] Erreur sauvegarde fichier: ${error.message}`);
+        }
+        
         logToFile(`[WATCH] Watch list remplacée (${oldList.length} -> ${cleanList.length} comptes) : ${cleanList.map(u => '@' + u).join(', ')}`);
         return res.status(201).json({
             success: true,
@@ -2329,13 +3090,26 @@ app.post('/api/watch-accounts', (req, res) => {
 app.delete('/api/watch-accounts', (req, res) => {
     const { username } = req.body;
     const index = watchAccounts.indexOf(username);
-    if (index > -1) watchAccounts.splice(index, 1);
+    if (index > -1) {
+        watchAccounts.splice(index, 1);
+        
+        // Sauvegarder dans le fichier JSON après suppression
+        try {
+            const fs = require('fs');
+            const watchAccountsPath = path.join(__dirname, 'watch-accounts.json');
+            fs.writeFileSync(watchAccountsPath, JSON.stringify(watchAccounts, null, 2), 'utf8');
+            logToFile(`[WATCH] Fichier watch-accounts.json mis à jour après suppression (${watchAccounts.length} comptes restants)`);
+        } catch (error) {
+            logToFile(`[WATCH] Erreur sauvegarde fichier après suppression: ${error.message}`);
+        }
+    }
+    
     logToFile(`[WATCH] Removed @${username} from watch list.`);
     res.json({ success: true });
 });
 
 // Route to get all connected accounts
-app.get('/api/accounts', (req, res) => {
+app.get('/api/accounts', requireClientAuth, (req, res) => {
     try {
         // Récupérer tous les comptes connectés (OAuth 1.0a + OAuth 2.0)
         let allAccounts = [];
@@ -2371,7 +3145,7 @@ app.get('/api/accounts', (req, res) => {
             return res.json({ accounts: [
                 { id: 'user1', username: 'TestUser1', avatar: 'T', authMethod: 'test' },
                 { id: 'user2', username: 'TestUser2', avatar: 'T', authMethod: 'test' }
-            ] });
+            ]});
         }
         
         console.log(`[DEBUG] API /api/accounts - ${allAccounts.length} comptes trouvés`);
@@ -2382,8 +3156,8 @@ app.get('/api/accounts', (req, res) => {
         res.json({ accounts: allAccounts });
         
     } catch (error) {
-        console.error('[ERROR] Erreur récupération comptes:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération des comptes' });
+        console.error('[ERROR] Erreur lors de la récupération des comptes:', error);
+        res.status(500).json({ accounts: [] });
     }
 });
 
@@ -2426,72 +3200,42 @@ function getRecentActionsForAccountV2(accountId, timeWindowMs) {
     }
 }
 
-// API pour récupérer les comptes à surveiller (watch accounts)
-app.get('/api/watch-accounts', (req, res) => {
+// Endpoint pour récupérer les statistiques du scheduler
+app.get('/api/scheduler/stats', async (req, res) => {
     try {
-        // Charger les paramètres du token qui contiennent les comptes à surveiller
-        const tokenSettings = loadTokenSettingsFromService();
-        let watchAccounts = tokenSettings.watchAccounts || [];
+        // Importer le module automation pour accéder au scheduler
+        const automationModule = require('./services/automation.js');
         
-        // S'assurer que watchAccounts est un tableau
-        if (!Array.isArray(watchAccounts)) {
-            console.warn('[API] watchAccounts n\'est pas un tableau, conversion...', typeof watchAccounts);
-            // Si c'est un objet, essayer de récupérer les valeurs ou créer un tableau vide
-            if (typeof watchAccounts === 'object' && watchAccounts !== null) {
-                watchAccounts = Object.values(watchAccounts).filter(item => item && typeof item === 'object');
-            } else {
-                watchAccounts = [];
+        let schedulerStats = {
+            plannedAccounts: 0,
+            totalSlots: 0,
+            usedSlots: 0,
+            nextAction: null,
+            breakdown: {
+                likes: { used: 0, total: 0 },
+                retweets: { used: 0, total: 0 },
+                replies: { used: 0, total: 0 }
+            }
+        };
+
+        // Récupérer les stats du scheduler si disponible
+        if (automationModule && typeof automationModule.getSchedulerStats === 'function') {
+            const stats = await automationModule.getSchedulerStats();
+            if (stats) {
+                schedulerStats = { ...schedulerStats, ...stats };
             }
         }
         
-        console.log(`[API] /api/watch-accounts - Retour de ${watchAccounts.length} comptes surveillés`);
-        console.log('[API] Structure watchAccounts:', watchAccounts.slice(0, 2)); // Log des 2 premiers pour debug
-        
-        res.json(watchAccounts);
+        res.json(schedulerStats);
     } catch (error) {
-        console.error('[API] Erreur lors de la récupération des comptes surveillés:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération des comptes surveillés' });
+        console.error('[SCHEDULER-API] Error fetching scheduler stats:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
-// API pour ajouter un compte à surveiller
-app.post('/api/watch-accounts', (req, res) => {
-    try {
-        const { pseudo } = req.body;
-        
-        if (!pseudo) {
-            return res.status(400).json({ error: 'Le pseudo est requis' });
-        }
-        
-        // Charger les paramètres actuels
-        const tokenSettings = loadTokenSettingsFromService();
-        const watchAccounts = tokenSettings.watchAccounts || [];
-        
-        // Vérifier si le compte n'est pas déjà surveillé
-        if (watchAccounts.some(account => account.pseudo === pseudo)) {
-            return res.status(400).json({ error: 'Ce compte est déjà surveillé' });
-        }
-        
-        // Ajouter le nouveau compte
-        const newAccount = {
-            pseudo: pseudo,
-            addedAt: new Date().toISOString()
-        };
-        
-        watchAccounts.push(newAccount);
-        tokenSettings.watchAccounts = watchAccounts;
-        
-        // Sauvegarder
-        saveTokenSettingsToService(tokenSettings);
-        
-        console.log(`[API] Compte @${pseudo} ajouté à la surveillance`);
-        res.json({ success: true, account: newAccount });
-        
-    } catch (error) {
-        console.error('[API] Erreur lors de l\'ajout du compte surveillé:', error);
-        res.status(500).json({ error: 'Erreur lors de l\'ajout du compte surveillé' });
-    }
-});
+// Endpoint dupliqué supprimé - utilisation de l'endpoint principal ligne 2385
+
+// Endpoint dupliqué supprimé - utilisation de l'endpoint principal ligne 2959
 
 // API pour supprimer un compte surveillé
 app.delete('/api/watch-accounts/:pseudo', (req, res) => {
@@ -2499,7 +3243,7 @@ app.delete('/api/watch-accounts/:pseudo', (req, res) => {
         const { pseudo } = req.params;
         
         // Charger les paramètres actuels
-        const tokenSettings = loadTokenSettingsFromService();
+        const tokenSettings = getTokenSettings().loadTokenSettingsFromService();
         const watchAccounts = tokenSettings.watchAccounts || [];
         
         // Filtrer pour supprimer le compte
@@ -2511,7 +3255,7 @@ app.delete('/api/watch-accounts/:pseudo', (req, res) => {
         }
         
         // Sauvegarder
-        saveTokenSettingsToService(tokenSettings);
+        getTokenSettings().saveTokenSettingsToService(tokenSettings);
         
         console.log(`[API] Compte @${pseudo} supprimé de la surveillance`);
         res.json({ success: true });
@@ -2552,7 +3296,7 @@ app.post('/api/cleanup-disconnected-accounts', (req, res) => {
         logToFile(`[ERROR] Cleanup comptes déconnectés: ${error.message}`);
         res.status(500).json({
             success: false,
-            error: 'Erreur lors du nettoyage: ' + error.message
+            error: 'Erreur lors du cleanup des comptes déconnectés'
         });
     }
 });
@@ -2644,6 +3388,30 @@ app.get('/api/automation-status', (req, res) => {
     res.json({ isEnabled: isAutomationEnabled });
 });
 
+// Monitoring: état du sémaphore/concurrence
+app.get('/api/monitoring/concurrency', (req, res) => {
+    try {
+        logToFile('[API][MONITOR] GET /api/monitoring/concurrency');
+        const status = getConcurrencyStatus();
+        return res.json({ success: true, data: status });
+    } catch (error) {
+        console.error('[API][MONITOR] concurrency error:', error);
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Monitoring: limites IA Perplexity (usage/timeout)
+app.get('/api/monitoring/ai-limits', (req, res) => {
+    try {
+        logToFile('[API][MONITOR] GET /api/monitoring/ai-limits');
+        const state = getAiLimitsState();
+        return res.json({ success: true, data: state });
+    } catch (error) {
+        console.error('[API][MONITOR] ai-limits error:', error);
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Route to get found tweets
 app.get('/api/found-tweets', (req, res) => {
     const foundTweets = Object.keys(performedActionsDB).map(tweetId => ({
@@ -2654,33 +3422,7 @@ app.get('/api/found-tweets', (req, res) => {
     res.json(foundTweets);
 });
 
-// WebSocket pour logs temps réel
-io.on('connection', (socket) => {
-    console.log('[WEBSOCKET] Client connecté:', socket.id);
-    
-    // Envoyer les logs existants lors de la connexion
-    const initialLogs = getFilteredLogsFromFile(20, 0);
-    socket.emit('initialLogs', initialLogs);
-    
-    // Écouter les nouveaux logs
-    const onNewLog = (logEntry) => {
-        socket.emit('newLog', logEntry);
-    };
-    
-    logEmitter.on('newLog', onNewLog);
-    
-    // Gérer la pagination des logs
-    socket.on('requestLogs', (data) => {
-        const { limit = 50, offset = 0 } = data;
-        const logs = getFilteredLogsFromFile(limit, offset);
-        socket.emit('logsResponse', logs);
-    });
-    
-    socket.on('disconnect', () => {
-        console.log('[WEBSOCKET] Client déconnecté:', socket.id);
-        logEmitter.removeListener('newLog', onNewLog);
-    });
-});
+// Configuration WebSocket (sera initialisée au démarrage du serveur)
 
 // API REST pour compatibilité (fallback)
 app.get('/api/live-logs', (req, res) => {
@@ -2821,20 +3563,34 @@ app.post('/api/rate-limiter/check-multiple', async (req, res) => {
     }
 });
 
+// Cache pour automation progress (TTL 30 secondes)
+let automationProgressCache = null;
+let automationProgressCacheTime = 0;
+const AUTOMATION_PROGRESS_CACHE_TTL = 30000; // 30 secondes
+
 // API pour récupérer les logs d'automation progress
 app.get('/api/automation-progress', async (req, res) => {
     try {
+        // Vérifier le cache d'abord
+        const now = Date.now();
+        if (automationProgressCache && (now - automationProgressCacheTime) < AUTOMATION_PROGRESS_CACHE_TTL) {
+            return res.json({
+                success: true,
+                data: automationProgressCache,
+                cached: true
+            });
+        }
+        
         // Utiliser les vrais logs du système au lieu des logs live
-        const { getFilteredLogsFromFile } = require('./services/logs-optimized');
+        // Utiliser le service unifié de logs
         const recentLogs = getFilteredLogsFromFile(50, 0);
         
-        console.log('[DEBUG] Real logs structure:', recentLogs);
-        console.log('[DEBUG] Real logs count:', recentLogs.logs ? recentLogs.logs.length : 0);
-        
         // Analyser les logs pour extraire les informations par catégorie
+        let hasStarted = false;
         const progressData = {
             currentStep: { icon: '🛠️', text: 'Waiting for automation to start...', status: 'idle' },
-            lastSuccess: { icon: '✅', text: 'No recent activity', status: 'idle' },
+            nextStep: { icon: '⏳', text: 'Calculating next action...', status: 'idle' },
+            lastSuccess: lastSuccessCache || { icon: '✅', text: 'No recent activity', status: 'idle' },
             errors: { icon: '✅', text: 'No errors detected', status: 'success' },
             tokens: { icon: '🔑', text: 'Tokens are healthy', status: 'success' },
             mutes: { icon: '🔓', text: 'All accounts active', status: 'success' },
@@ -2869,32 +3625,223 @@ app.get('/api/automation-progress', async (req, res) => {
                 continue;
             }
             
-            // Current Step - Scraping, likes, retweets, replies
-            if (logText.includes('searching for new tweets') || logText.includes('query sent to twitter')) {
-                progressData.currentStep = { icon: '🛠️', text: 'Searching for new tweets...', status: 'active' };
-            } else if (logText.includes('batch') && logText.includes('tweets found')) {
-                const match = logText.match(/batch \d+: (\d+) tweets found/);
-                const count = match ? match[1] : 'some';
-                progressData.currentStep = { icon: '📊', text: `Found ${count} tweets in current batch`, status: 'active' };
-            } else if (logText.includes('twitter api call in progress')) {
-                progressData.currentStep = { icon: '🔄', text: 'Twitter API call in progress...', status: 'active' };
-            } else if (logText.includes('heartbeat') && logText.includes('automation still active')) {
-                progressData.currentStep = { icon: '💓', text: 'Automation running (heartbeat detected)', status: 'active' };
-            } else if (logText.includes('delay') && logText.includes('waiting')) {
-                const match = logText.match(/waiting (\d+)s before next action/);
-                const seconds = match ? match[1] : 'some';
-                progressData.currentStep = { icon: '⏳', text: `Waiting ${seconds}s before next action`, status: 'waiting' };
+            // Détecter si l'automation a déjà démarré
+            if (logText.includes('scan') || logText.includes('like') || logText.includes('retweet') || 
+                logText.includes('reply') || logText.includes('automation') || logText.includes('action')) {
+                hasStarted = true;
             }
             
-            // Last Success - Basé sur les vrais logs
-            if (logText.includes('batch') && logText.includes('tweets found')) {
-                const match = logText.match(/batch \d+: (\d+) tweets found/);
+            // Current Step - Uniquement actions utiles liées aux tweets
+            if (logText.includes('executing like action') || logText.includes('liking tweet')) {
+                const accountMatch = logText.match(/par @(\w+)|by @(\w+)|account (\w+)/);
+                const account = accountMatch ? (accountMatch[1] || accountMatch[2] || accountMatch[3]) : 'account';
+                progressData.currentStep = { icon: '❤️', text: `Liking tweet par @${account}...`, status: 'active' };
+            } else if (logText.includes('executing retweet action') || logText.includes('retweeting')) {
+                const accountMatch = logText.match(/par @(\w+)|by @(\w+)|account (\w+)/);
+                const account = accountMatch ? (accountMatch[1] || accountMatch[2] || accountMatch[3]) : 'account';
+                progressData.currentStep = { icon: '🔄', text: `Retweeting par @${account}...`, status: 'active' };
+            } else if (logText.includes('executing reply action') || logText.includes('replying to tweet')) {
+                const accountMatch = logText.match(/par @(\w+)|by @(\w+)|account (\w+)/);
+                const account = accountMatch ? (accountMatch[1] || accountMatch[2] || accountMatch[3]) : 'account';
+                progressData.currentStep = { icon: '💬', text: `Replying to tweet par @${account}...`, status: 'active' };
+            } else if (logText.includes('searching for new tweets') || logText.includes('scan') && logText.includes('tweets')) {
+                progressData.currentStep = { icon: '🔍', text: 'Scanning for new tweets...', status: 'active' };
+            } else if (logText.includes('tweets trouvés') || logText.includes('tweets found')) {
+                const match = logText.match(/(\d+) tweets trouvés|(\d+) tweets found/);
+                const count = match ? (match[1] || match[2]) : 'some';
+                progressData.currentStep = { icon: '📊', text: `Found ${count} tweets in scan`, status: 'active' };
+            } else if (logText.includes('valides') && logText.includes('tweets')) {
+                const match = logText.match(/(\d+) valides/);
                 const count = match ? match[1] : 'some';
-                progressData.lastSuccess = { icon: '✅', text: `Successfully found ${count} tweets`, status: 'success' };
-            } else if (logText.includes('master-quota') && logText.includes('found') && logText.includes('connected accounts')) {
-                const match = logText.match(/found (\d+) actually connected accounts/);
-                const count = match ? match[1] : 'some';
-                progressData.lastSuccess = { icon: '🔗', text: `${count} accounts connected successfully`, status: 'success' };
+                progressData.currentStep = { icon: '✅', text: `${count} valid tweets ready for actions`, status: 'active' };
+            } else if (logText.includes('deferred action') && logText.includes('scheduled')) {
+                progressData.currentStep = { icon: '⏰', text: 'Scheduling tweet actions...', status: 'active' };
+            }
+            
+            // Last Success - Uniquement les actions réussies avec lien vers le tweet
+            // Rechercher les patterns d'actions dans les logs
+            if (logText.includes('like') && (logText.includes('par @') || logText.includes('by @')) && logText.includes('tweet')) {
+                // Pattern: "Like par @username sur tweet de @targetuser" ou similaire
+                let usernameMatch = logText.match(/par @(\w+)/);
+                if (!usernameMatch) {
+                    usernameMatch = logText.match(/by @(\w+)/);
+                }
+                const tweetMatch = logText.match(/(?:sur tweet de @|de @|from @)(\w+)/);
+                const tweetIdMatch = logText.match(/tweet (\d+)/);
+                
+                const account = usernameMatch ? usernameMatch[1] : 'account';
+                const targetUser = tweetMatch ? tweetMatch[1] : 'user';
+                const tweetId = tweetIdMatch ? tweetIdMatch[1] : null;
+                
+                let timestamp = '';
+                if (typeof log === 'object' && log.timestamp) {
+                    const date = new Date(log.timestamp);
+                    timestamp = ` à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+                }
+                
+                const tweetLink = tweetId ? `https://twitter.com/i/web/status/${tweetId}` : null;
+                const linkHtml = tweetLink ? ` <a href="${tweetLink}" target="_blank" style="color: #1da1f2; text-decoration: none;">🔗</a>` : '';
+                
+                const newSuccess = { 
+                    icon: '❤️', 
+                    text: `Like par @${account} sur tweet de @${targetUser}${timestamp}${linkHtml}`, 
+                    status: 'success' 
+                };
+                progressData.lastSuccess = newSuccess;
+                lastSuccessCache = newSuccess;
+            } else if (logText.includes('retweet') && (logText.includes('par @') || logText.includes('by @')) && logText.includes('tweet')) {
+                // Pattern: "Retweet par @username du tweet de @targetuser" ou similaire
+                let usernameMatch = logText.match(/par @(\w+)/);
+                if (!usernameMatch) {
+                    usernameMatch = logText.match(/by @(\w+)/);
+                }
+                const tweetMatch = logText.match(/(?:du tweet de @|de @|from @)(\w+)/);
+                const tweetIdMatch = logText.match(/tweet (\d+)/);
+                
+                const account = usernameMatch ? usernameMatch[1] : 'account';
+                const targetUser = tweetMatch ? tweetMatch[1] : 'user';
+                const tweetId = tweetIdMatch ? tweetIdMatch[1] : null;
+                
+                let timestamp = '';
+                if (typeof log === 'object' && log.timestamp) {
+                    const date = new Date(log.timestamp);
+                    timestamp = ` à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+                }
+                
+                const tweetLink = tweetId ? `https://twitter.com/i/web/status/${tweetId}` : null;
+                const linkHtml = tweetLink ? ` <a href="${tweetLink}" target="_blank" style="color: #1da1f2; text-decoration: none;">🔗</a>` : '';
+                
+                const newSuccess = { 
+                    icon: '🔄', 
+                    text: `Retweet par @${account} du tweet de @${targetUser}${timestamp}${linkHtml}`, 
+                    status: 'success' 
+                };
+                progressData.lastSuccess = newSuccess;
+                lastSuccessCache = newSuccess;
+            } else if (logText.includes('reply') && (logText.includes('par @') || logText.includes('by @')) && logText.includes('tweet')) {
+                // Pattern: "Reply par @username sur tweet de @targetuser" ou similaire
+                let usernameMatch = logText.match(/par @(\w+)/);
+                if (!usernameMatch) {
+                    usernameMatch = logText.match(/by @(\w+)/);
+                }
+                const tweetMatch = logText.match(/(?:sur tweet de @|de @|from @)(\w+)/);
+                const tweetIdMatch = logText.match(/tweet (\d+)/);
+                
+                const account = usernameMatch ? usernameMatch[1] : 'account';
+                const targetUser = tweetMatch ? tweetMatch[1] : 'user';
+                const tweetId = tweetIdMatch ? tweetIdMatch[1] : null;
+                
+                let timestamp = '';
+                if (typeof log === 'object' && log.timestamp) {
+                    const date = new Date(log.timestamp);
+                    timestamp = ` à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+                }
+                
+                const tweetLink = tweetId ? `https://twitter.com/i/web/status/${tweetId}` : null;
+                const linkHtml = tweetLink ? ` <a href="${tweetLink}" target="_blank" style="color: #1da1f2; text-decoration: none;">🔗</a>` : '';
+                
+                const newSuccess = { 
+                    icon: '💬', 
+                    text: `Reply par @${account} sur tweet de @${targetUser}${timestamp}${linkHtml}`, 
+                    status: 'success' 
+                };
+                progressData.lastSuccess = newSuccess;
+                lastSuccessCache = newSuccess;
+            }
+        }
+        
+        // Calculer Next Step depuis les actions différées dans les logs
+        let nextActionFound = false;
+        for (const log of logsToAnalyze.slice().reverse()) { // Parcourir du plus récent au plus ancien
+            let logText = '';
+            if (typeof log === 'string') {
+                logText = log.toLowerCase();
+            } else if (log && log.message) {
+                logText = log.message.toLowerCase();
+            } else {
+                continue;
+            }
+            
+            // Chercher les actions programmées/différées
+            if (logText.includes('action reprogrammée pour') || logText.includes('scheduled for')) {
+                const timeMatch = logText.match(/pour (\d{1,2}:\d{2}:\d{2})|for (\d{1,2}:\d{2}:\d{2})/);
+                const accountMatch = logText.match(/par @(\w+)|by @(\w+)|account (\w+)/);
+                const actionMatch = logText.match(/(like|retweet|reply)/);
+                
+                if (timeMatch && (timeMatch[1] || timeMatch[2])) {
+                    const scheduledTime = timeMatch[1] || timeMatch[2];
+                    const account = accountMatch ? (accountMatch[1] || accountMatch[2] || accountMatch[3]) : 'account';
+                    const actionType = actionMatch ? actionMatch[1] : 'action';
+                    
+                    // Calculer le temps restant
+                    const now = new Date();
+                    const [hours, minutes, seconds] = scheduledTime.split(':').map(Number);
+                    const scheduledDate = new Date();
+                    scheduledDate.setHours(hours, minutes, seconds, 0);
+                    
+                    // Si l'heure est déjà passée aujourd'hui, c'est pour demain
+                    if (scheduledDate <= now) {
+                        scheduledDate.setDate(scheduledDate.getDate() + 1);
+                    }
+                    
+                    const timeDiff = scheduledDate - now;
+                    const minutesUntil = Math.floor(timeDiff / (1000 * 60));
+                    const hoursUntil = Math.floor(minutesUntil / 60);
+                    const remainingMinutes = minutesUntil % 60;
+                    
+                    let timeText;
+                    if (hoursUntil > 0) {
+                        timeText = remainingMinutes > 0 ? `${hoursUntil}h${remainingMinutes}min` : `${hoursUntil}h`;
+                    } else if (minutesUntil > 0) {
+                        timeText = `${minutesUntil}min`;
+                    } else {
+                        timeText = 'bientôt';
+                    }
+                    
+                    const actionIcons = {
+                        like: '❤️',
+                        retweet: '🔄', 
+                        reply: '💬'
+                    };
+                    
+                    const icon = actionIcons[actionType] || '⏳';
+                    const actionText = actionType.charAt(0).toUpperCase() + actionType.slice(1);
+                    
+                    progressData.nextStep = {
+                        icon: icon,
+                        text: `${actionText} par @${account} dans ${timeText} (${scheduledTime})`,
+                        status: 'pending'
+                    };
+                    nextActionFound = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!nextActionFound) {
+            progressData.nextStep = {
+                icon: '⏸️',
+                text: 'Aucune action programmée',
+                status: 'idle'
+            };
+        }
+        
+        // Ne montrer "Waiting for automation to start..." que si aucune activité détectée
+        if (!hasStarted && progressData.currentStep.text === 'Waiting for automation to start...') {
+            // Garder le message par défaut seulement si vraiment aucune activité
+        } else if (!hasStarted) {
+            progressData.currentStep = { icon: '🛠️', text: 'Waiting for automation to start...', status: 'idle' };
+        }
+            
+        for (const log of logsToAnalyze) {
+            // Extraire le message du log structuré
+            let logText = '';
+            if (typeof log === 'string') {
+                logText = log.toLowerCase();
+            } else if (log && log.message) {
+                logText = log.message.toLowerCase();
+            } else {
+                continue;
             }
             
             // Errors / Warnings - Basé sur les vrais logs
@@ -3660,318 +4607,8 @@ app.post('/api/smart-scheduler/analyze', async (req, res) => {
     }
 });
 
-// ===== INFLUENCER DETECTOR APIs =====
-
-// API pour obtenir les statistiques des interactions d'influenceurs
-app.get('/api/influencer-detector/stats', (req, res) => {
-    try {
-        const stats = influencerDetector.getInfluencerStats();
-        res.json({
-            success: true,
-            stats
-        });
-    } catch (error) {
-        console.error('Erreur lors de la récupération des stats influenceurs:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Erreur lors de la récupération des statistiques'
-        });
-    }
-});
-
-// API pour obtenir les interactions récentes d'influenceurs
-app.get('/api/influencer-detector/recent', (req, res) => {
-    try {
-        const limit = parseInt(req.query.limit) || 20;
-        const interactions = influencerDetector.getRecentInteractions(limit);
-        res.json({
-            success: true,
-            interactions
-        });
-    } catch (error) {
-        console.error('Erreur lors de la récupération des interactions récentes:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Erreur lors de la récupération des interactions'
-        });
-    }
-});
-
-// API pour obtenir les interactions par tier d'influenceur
-app.get('/api/influencer-detector/by-tier/:tier', (req, res) => {
-    try {
-        const { tier } = req.params;
-        const limit = parseInt(req.query.limit) || 10;
-        
-        if (!['MEGA', 'MACRO', 'MICRO', 'NANO'].includes(tier.toUpperCase())) {
-            return res.status(400).json({
-                success: false,
-                error: 'Tier invalide. Utilisez: MEGA, MACRO, MICRO, ou NANO'
-            });
-        }
-        
-        const interactions = influencerDetector.getInteractionsByTier(tier.toUpperCase(), limit);
-        res.json({
-            success: true,
-            interactions
-        });
-    } catch (error) {
-        console.error('Erreur lors de la récupération des interactions par tier:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Erreur lors de la récupération des interactions'
-        });
-    }
-});
-
-// API pour enregistrer manuellement une interaction d'influenceur
-app.post('/api/influencer-detector/record', (req, res) => {
-    try {
-        const {
-            tweetId,
-            tweetUrl,
-            tweetText,
-            tweetAuthor,
-            influencerId,
-            influencerUsername,
-            influencerDisplayName,
-            followerCount,
-            isVerified,
-            interactionType,
-            interactionText
-        } = req.body;
-        
-        // Validation des champs requis
-        if (!tweetId || !influencerId || !influencerUsername || !followerCount || !interactionType) {
-            return res.status(400).json({
-                success: false,
-                error: 'Champs requis manquants: tweetId, influencerId, influencerUsername, followerCount, interactionType'
-            });
-        }
-        
-        const interaction = influencerDetector.recordInfluencerInteraction({
-            tweetId,
-            tweetUrl,
-            tweetText,
-            tweetAuthor,
-            influencerId,
-            influencerUsername,
-            influencerDisplayName,
-            followerCount: parseInt(followerCount),
-            isVerified: Boolean(isVerified),
-            interactionType,
-            interactionText
-        });
-        
-        if (interaction) {
-            // Envoyer une notification WebSocket si c'est un influenceur important
-            if (interaction.influencer.tier === 'MEGA' || interaction.influencer.tier === 'MACRO') {
-                io.emit('influencer-interaction', {
-                    type: 'new-interaction',
-                    interaction
-                });
-            }
-            
-            logToFile(`[INFLUENCER DETECTOR] Nouvelle interaction enregistrée: ${interaction.influencer.tier} influencer @${interaction.influencer.username}`);
-            
-            res.json({
-                success: true,
-                interaction
-            });
-        } else {
-            res.json({
-                success: false,
-                message: 'Interaction non enregistrée (utilisateur régulier)'
-            });
-        }
-    } catch (error) {
-        console.error('Erreur lors de l\'enregistrement de l\'interaction:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Erreur lors de l\'enregistrement de l\'interaction'
-        });
-    }
-});
-
-// API pour simuler une interaction d'influenceur (pour les tests)
-app.post('/api/influencer-detector/simulate', (req, res) => {
-    try {
-        const interaction = influencerDetector.simulateInfluencerInteraction();
-        
-        // Envoyer notification WebSocket pour les interactions importantes
-        if (interaction.influencer.tier !== 'REGULAR') {
-            io.emit('influencer-interaction', {
-                type: 'new-interaction',
-                interaction: interaction
-            });
-        }
-        
-        res.json({ 
-            success: true, 
-            interaction: interaction,
-            message: 'Interaction simulée avec succès' 
-        });
-    } catch (error) {
-        console.error('[API] Error simulating influencer interaction:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: error.message 
-        });
-    }
-});
-
-// ===== TWITTER INTEGRATION APIs =====
-
-// API pour initialiser le client Twitter
-app.post('/api/influencer-detector/twitter/init', (req, res) => {
-    try {
-        const { bearerToken } = req.body;
-        
-        if (!bearerToken) {
-            return res.status(400).json({
-                success: false,
-                error: 'Bearer token requis'
-            });
-        }
-        
-        const success = influencerDetector.initializeTwitterClient(bearerToken);
-        
-        res.json({
-            success,
-            message: success ? 'Client Twitter initialisé' : 'Erreur lors de l\'initialisation'
-        });
-    } catch (error) {
-        console.error('[API] Error initializing Twitter client:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// API pour ajouter un tweet au monitoring
-app.post('/api/influencer-detector/monitor/add', (req, res) => {
-    try {
-        const { tweetId, metadata } = req.body;
-        
-        if (!tweetId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Tweet ID requis'
-            });
-        }
-        
-        influencerDetector.addTweetToMonitor(tweetId, metadata);
-        
-        res.json({
-            success: true,
-            message: `Tweet ${tweetId} ajouté au monitoring`
-        });
-    } catch (error) {
-        console.error('[API] Error adding tweet to monitor:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// API pour supprimer un tweet du monitoring
-app.delete('/api/influencer-detector/monitor/:tweetId', (req, res) => {
-    try {
-        const { tweetId } = req.params;
-        
-        influencerDetector.removeTweetFromMonitor(tweetId);
-        
-        res.json({
-            success: true,
-            message: `Tweet ${tweetId} supprimé du monitoring`
-        });
-    } catch (error) {
-        console.error('[API] Error removing tweet from monitor:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// API pour démarrer le monitoring continu
-app.post('/api/influencer-detector/monitor/start', (req, res) => {
-    try {
-        const { intervalMinutes = 5 } = req.body;
-        
-        influencerDetector.startContinuousMonitoring(intervalMinutes);
-        
-        res.json({
-            success: true,
-            message: `Monitoring continu démarré (${intervalMinutes}min)`
-        });
-    } catch (error) {
-        console.error('[API] Error starting monitoring:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// API pour arrêter le monitoring continu
-app.post('/api/influencer-detector/monitor/stop', (req, res) => {
-    try {
-        influencerDetector.stopContinuousMonitoring();
-        
-        res.json({
-            success: true,
-            message: 'Monitoring continu arrêté'
-        });
-    } catch (error) {
-        console.error('[API] Error stopping monitoring:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// API pour monitorer manuellement un tweet
-app.post('/api/influencer-detector/monitor/scan/:tweetId', async (req, res) => {
-    try {
-        const { tweetId } = req.params;
-        
-        const success = await influencerDetector.monitorTweetInteractions(tweetId);
-        
-        res.json({
-            success,
-            message: success ? `Tweet ${tweetId} scanné` : 'Erreur lors du scan'
-        });
-    } catch (error) {
-        console.error('[API] Error scanning tweet:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// API pour obtenir la liste des tweets monitorés
-app.get('/api/influencer-detector/monitor/list', (req, res) => {
-    try {
-        const monitoredTweets = Array.from(influencerDetector.monitoredTweets);
-        
-        res.json({
-            success: true,
-            tweets: monitoredTweets,
-            count: monitoredTweets.length
-        });
-    } catch (error) {
-        console.error('[API] Error listing monitored tweets:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
+// ===== INFLUENCER DETECTOR APIs - COMPLÈTEMENT DÉSACTIVÉES =====
+// Toutes les APIs influencer-detector sont désactivées
 
 // ===== END INFLUENCER DETECTOR APIs =====
 
@@ -4071,8 +4708,8 @@ app.get('/api/admin-info', (req, res) => {
 
 // === NOUVELLES APIS POUR DASHBOARD GLASSMORPHISM ===
 
-// API pour récupérer les stats de la queue d'automation
-app.get('/api/automation-queue', async (req, res) => {
+// API pour récupérer les stats de la queue d'automation (statistiques rapides)
+app.get('/api/automation-queue-stats', async (req, res) => {
     try {
         const automation = require('./services/automation');
         
@@ -4285,11 +4922,71 @@ app.get('/api/accounts-status', async (req, res) => {
 });
 
 
-// Démarrage du serveur
-server.listen(PORT, async () => {
-    console.log(`[SERVER] X-AutoRaider démarré sur http://localhost:${PORT}`);
-    console.log(`[STARTUP] APIs disponibles:`);
-    console.log(`[STARTUP] - Dashboard Glassmorphism: /api/automation-queue, /api/success-rate, /api/next-scan-time, /api/daily-comparison, /api/accounts-status`);
+// Démarrage du serveur (uniquement si exécuté directement)
+if (IS_MAIN) {
+    (async () => {
+        // Démarrer le service de récupération des scans
+        const { getScanRecoveryService } = require('./services/scan-recovery');
+        const scanRecoveryService = getScanRecoveryService();
+        scanRecoveryService.startMonitoring();
+
+        // Initialiser le SmartScheduler
+        const smartScheduler = getSmartScheduler();
+        const initResult = await smartScheduler.initialize();
+        if (initResult) {
+            console.log(`[SMART-SCHEDULER] Service initialisé avec succès`);
+        } else {
+            console.log(`[SMART-SCHEDULER] Échec d'initialisation - mode dégradé`);
+        }
+
+        // Configuration WebSocket pour logs temps réel
+        io.on('connection', (socket) => {
+            console.log('[WEBSOCKET] Client connecté:', socket.id);
+            
+            // Envoyer les logs existants lors de la connexion
+            const initialLogs = getFilteredLogsFromFile(20, 0);
+            socket.emit('initialLogs', initialLogs);
+            
+            // Écouter les nouveaux logs depuis le service unifié
+            const onNewLog = (logEntry) => {
+                socket.emit('newLog', logEntry);
+            };
+            
+            unifiedLogger.on('newLog', onNewLog);
+            
+            // Gérer la pagination des logs
+            socket.on('requestLogs', (data) => {
+                const { limit = 50, offset = 0 } = data;
+                const logs = getFilteredLogsFromFile(limit, offset);
+                socket.emit('logsResponse', logs);
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('[WEBSOCKET] Client déconnecté:', socket.id);
+                unifiedLogger.off('newLog', onNewLog);
+            });
+        });
+
+        // Démarrer le serveur avec Socket.IO
+        const PORT = process.env.PORT || 3005;
+        server.listen(PORT, () => {
+            console.log(`Serveur démarré sur le port ${PORT}`);
+            console.log(`Interface accessible sur http://localhost:${PORT}`);
+            console.log(`WebSocket Socket.IO disponible sur ws://localhost:${PORT}/socket.io/`);
+            console.log(`Service de récupération des scans activé`);
+            
+            // Charger les comptes à surveiller au démarrage du serveur
+            loadWatchAccountsOnStartup();
+        });
+        console.log(`[STARTUP] APIs disponibles:`);
+        // Initialiser Redis cache (mode dégradé si indisponible)
+        try {
+            const ok = await cache.initialize();
+            console.log(`[CACHE] Redis ${ok ? 'opérationnel' : 'indisponible - mode dégradé'}`);
+        } catch (e) {
+            console.log('[CACHE] Initialisation échouée - mode dégradé');
+        }
+    console.log(`[STARTUP] - Dashboard Glassmorphism: /api/automation-queue (données détaillées), /api/automation-queue-stats (stats), /api/success-rate, /api/next-scan-time, /api/daily-comparison, /api/accounts-status`);
     
     // Charger les actions effectuées au démarrage
     console.log(`[STARTUP] Chargement de l'historique des actions...`);
@@ -4306,18 +5003,18 @@ server.listen(PORT, async () => {
     // Migration automatique des statistiques d'actions au démarrage
     console.log(`[ACTIONS-STATS] Vérification du cache persistant...`);
     try {
-        const currentStats = getStats();
+        const currentStats = getActionsStats().getStats();
         
         // Si les stats sont vides (premier démarrage ou reset), migration automatique
         if (currentStats.allTime.total === 0) {
             console.log(`[ACTIONS-STATS] Cache vide détecté, migration automatique depuis les logs...`);
-            const { getFilteredLogsFromFile } = require('./services/logs-optimized');
+            // Utiliser le service unifié de logs
             const logs = getFilteredLogsFromFile(10000, 0); // Lire beaucoup de logs pour la migration
             
             console.log(`[ACTIONS-STATS] ${logs.logs.length} logs trouvés pour migration`);
-            recalculateFromLogs(logs);
+            getActionsStats().recalculateFromLogs(logs);
             
-            const finalStats = getStats();
+            const finalStats = getActionsStats().getStats();
             console.log(`[ACTIONS-STATS] Migration terminée - Total: ${finalStats.allTime.total} actions`);
         } else {
             console.log(`[ACTIONS-STATS] Cache existant trouvé - Total: ${currentStats.allTime.total} actions`);
@@ -4353,13 +5050,57 @@ server.listen(PORT, async () => {
         console.log(`[ENCRYPTION] Service de chiffrement non disponible`);
     }
     
-    // Test de connectivité Twitter au démarrage
-    testTwitterConnectivity();
-    
-    console.log(`[STARTUP] Système prêt. Automation status: ${isAutomationEnabled}`);
-});
+        // Test de connectivité Twitter au démarrage
+        testTwitterConnectivity();
+        
+        console.log(`[STARTUP] Système prêt. Automation status: ${isAutomationEnabled}`);
+    })();
+}
+
+// Exporter l'app (permet aux tests ou scripts d'importer sans lancer le serveur)
+module.exports = { app, server };
 
 // LEGACY shared-quota APIs supprimées
+
+// Endpoint de monitoring du service de récupération des scans
+app.get('/api/scan-recovery-status', (req, res) => {
+    try {
+        const { getScanRecoveryService } = require('./services/scan-recovery');
+        const scanRecovery = getScanRecoveryService();
+        const stats = scanRecovery.getStats();
+        
+        res.json({
+            success: true,
+            data: stats,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Endpoint d'urgence pour débloquer manuellement
+app.post('/api/scan-recovery-emergency-unblock', (req, res) => {
+    try {
+        const { getScanRecoveryService } = require('./services/scan-recovery');
+        const scanRecovery = getScanRecoveryService();
+        scanRecovery.emergencyUnblock();
+        
+        res.json({
+            success: true,
+            message: 'Déblocage d\'urgence effectué',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 /**
  * API pour récupérer l'historique des actions
@@ -4393,9 +5134,18 @@ app.get('/api/actions-history', (req, res) => {
                         if (accountId && username !== accountId) return;
                         if (actionType && logEntry.type !== actionType) return;
                         
+                        // Extraire le vrai nom d'utilisateur depuis le message si disponible
+                        let realTargetUser = logEntry.targetUser || 'unknown';
+                        if (logEntry.message && logEntry.message.includes(' de @')) {
+                            const match = logEntry.message.match(/ de @(\w+)/);
+                            if (match && match[1]) {
+                                realTargetUser = match[1];
+                            }
+                        }
+                        
                         // Construire les détails de l'action
                         const details = logEntry.message || 
-                            `${logEntry.type} sur le tweet de @${logEntry.targetUser || 'unknown'}`;
+                            `${logEntry.type} on tweet by @${realTargetUser}`;
                         
                         history.push({
                             timestamp: logEntry.timestamp,
@@ -4403,54 +5153,112 @@ app.get('/api/actions-history', (req, res) => {
                             username: username,
                             details: details,
                             tweetId: logEntry.tweetId,
-                            targetUser: logEntry.targetUser,
-                            tweetText: logEntry.tweetText,
-                            replyText: logEntry.replyText || null
+                            targetUser: realTargetUser,
+                            tweetText: logEntry.tweetText
                         });
-                    } else if (logEntry.message) {
-                        // Fallback : parser l'ancien format dans le message
-                        const message = logEntry.message;
-                        const actionMatch = message.match(/\[(LIKE|RETWEET|REPLY)\]\[([^\]]+)\]/);
-                        
-                        if (actionMatch) {
-                            const [, action, user] = actionMatch;
-                            
-                            // Filtrer si nécessaire
-                            if (accountId && user !== accountId) return;
-                            if (actionType && action.toLowerCase() !== actionType) return;
-                            
-                            history.push({
-                                timestamp: logEntry.timestamp,
-                                actionType: action.toLowerCase(),
-                                username: user,
-                                details: message
-                            });
-                        }
                     }
                 } catch (parseError) {
-                    // Si ce n'est pas du JSON valide, ignorer cette ligne
-                    console.warn('[HISTORY] Ligne de log non-JSON ignorée:', line.substring(0, 100));
+                    // Ignorer les lignes non-JSON
                 }
             });
         }
         
-        // Trier par timestamp décroissant
-        history.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        // Limiter les résultats
-        const limitedHistory = history.slice(0, parseInt(limit));
+        const actions = history; // Renommer pour cohérence
+        actions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const limitedActions = actions.slice(0, parseInt(limit));
         
         res.json({
             success: true,
-            history: limitedHistory,
-            total: history.length
+            actions: limitedActions,
+            total: actions.length,
+            filtered: { accountId, actionType, limit: parseInt(limit) }
         });
     } catch (error) {
-        console.error('[HISTORY] Erreur lors de la récupération de l\'historique:', error);
+        console.error('Erreur API actions-history:', error);
         res.status(500).json({
             success: false,
             error: 'Erreur lors de la récupération de l\'historique'
         });
+    }
+});
+
+// API pour les métriques de performance
+app.get('/api/analytics/performance', requireClientAuth, async (req, res) => {
+    try {
+        const metrics = await analyticsService.getPerformanceMetrics();
+        res.json({ success: true, data: metrics });
+    } catch (error) {
+        console.error('Erreur métriques performance:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// API pour les analytics comportementales
+app.get('/api/analytics/behavioral', async (req, res) => {
+    try {
+        const analytics = await analyticsService.getBehavioralAnalytics();
+        res.json({ success: true, data: analytics });
+    } catch (error) {
+        console.error('Erreur analytics comportementales:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// API pour les métriques de qualité
+app.get('/api/analytics/quality', async (req, res) => {
+    try {
+        const metrics = await analyticsService.getQualityMetrics();
+        res.json({ success: true, data: metrics });
+    } catch (error) {
+        console.error('Erreur métriques qualité:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// API pour les recommandations intelligentes
+app.get('/api/analytics/recommendations', async (req, res) => {
+    try {
+        const recommendations = await analyticsService.getRecommendations();
+        res.json({ success: true, data: recommendations });
+    } catch (error) {
+        console.error('Erreur recommandations:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// API pour dashboard analytics complet
+app.get('/api/analytics/dashboard', async (req, res) => {
+    try {
+        const [performance, behavioral, quality, recommendations] = await Promise.all([
+            analyticsService.getPerformanceMetrics(),
+            analyticsService.getBehavioralAnalytics(), 
+            analyticsService.getQualityMetrics(),
+            analyticsService.getRecommendations()
+        ]);
+        
+        res.json({
+            success: true,
+            data: {
+                performance,
+                behavioral,
+                quality,
+                recommendations,
+                timestamp: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        console.error('Erreur dashboard analytics:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// API pour vider le cache analytics
+app.post('/api/analytics/clear-cache', (req, res) => {
+    try {
+        analyticsService.clearCache();
+        res.json({ success: true, message: 'Cache analytics vidé' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -4459,7 +5267,7 @@ app.get('/api/actions-history', (req, res) => {
 /**
  * API pour récupérer la file d'attente des actions à venir - Version corrigée
  */
-app.get('/api/automation-queue', (req, res) => {
+app.get('/api/automation-queue', requireClientAuth, (req, res) => {
     try {
         console.log('[QUEUE] API appelée - début du traitement');
         
@@ -4542,335 +5350,570 @@ app.get('/api/automation-queue', (req, res) => {
             actionsGenerated = 87;
         }
 
-        // Récupérer les vrais tweets détectés depuis les logs
-        const detectedTweets = [];
+        // Récupérer les actions planifiées depuis les logs d'automation
+        const plannedActions = [];
         
         try {
-            const fs = require('fs');
-            const logPath = path.join(__dirname, 'auto-actions.log');
+            const result = getLogsIncremental(1000, 0);
+            const logs = Array.isArray(result?.logs) ? result.logs : [];
             
-            if (fs.existsSync(logPath)) {
-                const logContent = fs.readFileSync(logPath, 'utf8');
-                const logLines = logContent.split('\n').filter(line => line.trim());
+            // Chercher les actions générées dans les logs récents
+            for (const entry of logs) {
+                const message = entry && entry.message ? entry.message : '';
+                const timestamp = entry && entry.timestamp ? entry.timestamp : null;
+                if (!message || !timestamp) continue;
                 
-                // Chercher les vrais tweets dans les logs récents (200 dernières lignes)
-                const realTweets = [];
-                for (let i = logLines.length - 1; i >= Math.max(0, logLines.length - 200); i--) {
+                // Chercher les logs d'actions générées (format optimisé)
+                if (message.includes('[DEBUG][ACTIONS_OBJ]') || message.includes('[DEBUG][ACTION_BATCH]')) {
                     try {
-                        const logEntry = JSON.parse(logLines[i]);
-                        const message = logEntry.message || '';
+                        // Nouveau format batch: [DEBUG][ACTION_BATCH] Processing action X/Y: [username] type
+                        const batchMatch = message.match(/\[DEBUG\]\[ACTION_BATCH\]\s*Processing action \d+\/\d+:\s*\[([^\]]+)\]\s*(\w+)/);
+                        if (batchMatch) {
+                            const username = batchMatch[1];
+                            const actionType = batchMatch[2];
+                            plannedActions.push({
+                                type: actionType,
+                                accountUsername: username,
+                                targetTweetId: 'batch_detected',
+                                pseudo: 'optimized_batch',
+                                scheduledTime: timestamp,
+                                priority: 'normal'
+                            });
+                        }
                         
-                        // Chercher les logs d'actions (likes, retweets, replies) qui contiennent des infos de tweets
-                        if (message.includes('[LIKE]') || message.includes('[RETWEET]') || message.includes('[REPLY]')) {
-                            // Extraire les infos du tweet depuis le log
-                            const tweetMatch = message.match(/tweet (\d+)/i);
-                            const authorMatch = message.match(/@([a-zA-Z0-9_]+)/);
-                            const actionMatch = message.match(/\[(LIKE|RETWEET|REPLY)\]/);
+                        // Format original (fallback)
+                        const jsonMatch = message.match(/\[DEBUG\]\[ACTIONS_OBJ\]\s*(.+)/);
+                        if (jsonMatch) {
+                            let actionsJson = jsonMatch[1];
+                            // Nettoyer le JSON tronqué
+                            if (actionsJson.endsWith('...')) {
+                                actionsJson = actionsJson.slice(0, -3);
+                            }
                             
-                            if (tweetMatch && authorMatch && actionMatch) {
-                                const tweetId = tweetMatch[1];
-                                const author = `@${authorMatch[1]}`;
-                                const action = actionMatch[1].toLowerCase();
-                                
-                                // Éviter les doublons
-                                if (!realTweets.find(t => t.id === tweetId)) {
-                                    realTweets.push({
-                                        id: tweetId,
-                                        content: `Tweet ${action}é de ${author}`,
-                                        author: author,
-                                        timestamp: logEntry.timestamp || new Date().toISOString(),
-                                        source: 'automation_logs',
-                                        type: 'real_action',
-                                        actionType: action
+                            const actions = JSON.parse(actionsJson);
+                            if (Array.isArray(actions)) {
+                                for (const action of actions) {
+                                    plannedActions.push({
+                                        type: action.type,
+                                        accountUsername: action.acc?.username || 'Unknown',
+                                        targetTweetId: action.tweetId,
+                                        pseudo: action.pseudo,
+                                        scheduledTime: timestamp,
+                                        priority: 'normal'
                                     });
                                 }
                             }
                         }
-                        
-                        // Chercher les logs de détection de tweets
-                        if (message.includes('tweets trouvés') && message.includes('total')) {
-                            const countMatch = message.match(/(\d+)\s+tweets trouvés/);
-                            if (countMatch) {
-                                realTweets.push({
-                                    id: `scan_${Date.now()}`,
-                                    content: `Scan terminé : ${countMatch[1]} tweets trouvés`,
-                                    author: '@system',
-                                    timestamp: logEntry.timestamp || new Date().toISOString(),
-                                    source: 'scan_results',
-                                    type: 'scan_summary',
-                                    tweetCount: parseInt(countMatch[1])
-                                });
-                            }
-                        }
-                        
-                        // Limiter à 8 tweets max pour l'affichage
-                        if (realTweets.length >= 8) break;
-                        
                     } catch (parseError) {
+                        // Ignorer les erreurs de parsing JSON
                         continue;
                     }
                 }
                 
-                // Ajouter les vrais tweets trouvés
-                detectedTweets.push(...realTweets.slice(0, 8));
-                console.log(`[API] ${realTweets.length} vrais tweets extraits des logs`);
-            }
-        } catch (logError) {
-            console.log('[API] Erreur lecture logs tweets:', logError.message);
-        }
-        
-        // Fallback si aucun vrai tweet trouvé
-        if (detectedTweets.length === 0 && tweetsFound > 0) {
-            detectedTweets.push({
-                id: 'no_real_tweets',
-                content: `${tweetsFound} comptes surveillés - Aucun tweet récent dans les logs`,
-                author: '@system',
-                timestamp: new Date().toISOString(),
-                source: 'fallback',
-                type: 'info'
-            });
-        }
-
-        const plannedActions = [];
-        
-        // Récupérer les vraies actions planifiées depuis les logs et la file d'attente
-        try {
-            const fs = require('fs');
-            const logPath = path.join(__dirname, 'auto-actions.log');
-            
-            if (fs.existsSync(logPath)) {
-                const logContent = fs.readFileSync(logPath, 'utf8');
-                const logLines = logContent.split('\n').filter(line => line.trim());
-                
-                // Chercher les actions planifiées dans les logs récents
-                const realActions = [];
-                for (let i = logLines.length - 1; i >= Math.max(0, logLines.length - 100); i--) {
-                    try {
-                        const logEntry = JSON.parse(logLines[i]);
-                        const message = logEntry.message || '';
-                        
-                        // Chercher les logs d'actions planifiées ou en attente
-                        if (message.includes('Action planifiée') || message.includes('En attente') || message.includes('Programmé')) {
-                            const actionMatch = message.match(/\[(LIKE|RETWEET|REPLY)\]/);
-                            const authorMatch = message.match(/@([a-zA-Z0-9_]+)/);
-                            const tweetMatch = message.match(/tweet (\d+)/i);
-                            
-                            if (actionMatch && authorMatch) {
-                                const actionType = actionMatch[1].toLowerCase();
-                                const author = `@${authorMatch[1]}`;
-                                const tweetId = tweetMatch ? tweetMatch[1] : `${Date.now()}${Math.floor(Math.random() * 1000)}`;
-                                
-                                // Calculer un horaire futur réaliste
-                                const baseDelay = Math.random() * 7200000; // 0-2h
-                                const scheduledTime = new Date(Date.now() + baseDelay);
-                                
-                                // Priorité basée sur le type et l'urgence
-                                let priority = 'normal';
-                                const timeUntil = scheduledTime.getTime() - Date.now();
-                                if (timeUntil < 600000) priority = 'urgent';
-                                else if (timeUntil > 3600000) priority = 'faible';
-                                else if (actionType === 'reply') priority = 'urgent';
-                                
-                                realActions.push({
-                                    id: `real_action_${tweetId}_${actionType}`,
-                                    accountId: `account_${author}`,
-                                    accountUsername: author,
-                                    type: actionType,
-                                    targetTweetId: tweetId,
-                                    scheduledTime: scheduledTime.toISOString(),
-                                    status: 'pending',
-                                    priority: priority,
-                                    source: 'real_logs'
-                                });
-                            }
-                        }
-                        
-                        // Limiter à 10 actions max
-                        if (realActions.length >= 10) break;
-                        
-                    } catch (parseError) {
-                        continue;
-                    }
-                }
-                
-                plannedActions.push(...realActions);
-                console.log(`[API] ${realActions.length} vraies actions extraites des logs`);
-            }
-        } catch (logError) {
-            console.log('[API] Erreur lecture logs actions:', logError.message);
-        }
-        
-        // Si pas assez de vraies actions, compléter avec des actions réalistes basées sur les vrais comptes
-        if (plannedActions.length < Math.min(actionsGenerated, 10)) {
-            let realAccountsForActions = [];
-            
-            // Récupérer les vrais comptes connectés
-            try {
-                const realAccounts = getAllConnectedAccounts();
-                if (realAccounts && realAccounts.length > 0) {
-                    realAccountsForActions = realAccounts.slice(0, activeAccounts).map(account => ({
-                        id: account.id || `account_${Math.random()}`,
-                        username: account.username || account.pseudo || account.name || `compte_${Math.random()}`
-                    }));
-                }
-            } catch (error) {
-                console.log('[API] Erreur récupération comptes pour actions:', error.message);
-            }
-            
-            // Fallback si pas de vrais comptes
-            if (realAccountsForActions.length === 0) {
-                realAccountsForActions = [{
-                    id: 'fallback_account',
-                    username: '@psyk0t'
-                }];
-            }
-            
-            const actionsToGenerate = Math.min(actionsGenerated, 10) - plannedActions.length;
-            for (let i = 0; i < actionsToGenerate; i++) {
-                const selectedAccount = realAccountsForActions[Math.floor(Math.random() * realAccountsForActions.length)];
-                const accountUsername = selectedAccount.username;
-                
-                // Types d'actions avec répartition réaliste
-                let actionType = 'like';
-                const rand = Math.random();
-                if (rand < 0.15) actionType = 'reply';
-                else if (rand < 0.35) actionType = 'retweet';
-                else actionType = 'like';
-                
-                const tweetId = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
-                const baseDelay = Math.random() * 3600000;
-                const randomDelay = Math.random() * 1800000;
-                const scheduledTime = new Date(Date.now() + baseDelay + (i * 420000) + randomDelay);
-                
-                let priority = 'normal';
-                const timeUntil = scheduledTime.getTime() - Date.now();
-                if (timeUntil < 600000) priority = 'urgent';
-                else if (timeUntil > 3600000) priority = 'faible';
-                else if (actionType === 'reply') priority = 'urgent';
-                
-                // Statut logique basé sur l'heure d'exécution (réutilise timeUntil)
-                let status = 'pending';
-                if (timeUntil < 300000) { // Moins de 5 minutes = en cours
-                    status = 'processing';
-                } else {
-                    status = 'pending';
-                }
-                
-                plannedActions.push({
-                    id: `action_${Date.now()}_${i}`,
-                    accountId: selectedAccount.id,
-                    accountUsername: accountUsername,
-                    type: actionType,
-                    targetTweetId: tweetId,
-                    scheduledTime: scheduledTime.toISOString(),
-                    status: status,
-                    priority: priority,
-                    source: 'generated'
-                });
-            }
-        }
-        
-        // Trier toutes les actions par ordre chronologique (plus proche en premier)
-        plannedActions.sort((a, b) => {
-            const timeA = new Date(a.scheduledTime).getTime();
-            const timeB = new Date(b.scheduledTime).getTime();
-            return timeA - timeB;
-        });
-
-        // Créer le statut des comptes réels
-        const accountsStatus = [];
-        
-        // Récupérer les vrais comptes connectés si possible
-        try {
-            const realAccounts = getAllConnectedAccounts();
-            if (realAccounts && realAccounts.length > 0) {
-                realAccounts.forEach((account, index) => {
-                    const accountUsername = account.username || account.pseudo || account.name || `compte_${index + 1}`;
-                    const isActive = index < activeAccounts;
+                // Chercher les logs d'actions individuelles (format optimisé)
+                const actionMatch = message.match(/\[DEBUG\]\[ACTION-GEN\]\s*Processing account:\s*(\w+)\s*\([^)]+\)\s*for tweet\s*(\d+)/);
+                if (actionMatch) {
+                    const username = actionMatch[1];
+                    const tweetId = actionMatch[2];
                     
-                    accountsStatus.push({
-                        id: account.id || `account_${index + 1}`,
-                        username: accountUsername.startsWith('@') ? accountUsername : `@${accountUsername}`,
-                        status: isActive ? 'active' : 'paused',
-                        lastAction: new Date(Date.now() - (300000 + index * 120000)).toISOString(),
-                        actionsPlanned: isActive ? Math.floor(actionsGenerated / Math.max(activeAccounts, 1)) : 0,
-                        authMethod: account.authMethod || 'oauth1a',
-                        quotaUsed: isActive ? Math.floor(Math.random() * 50) : 0
+                    // Chercher l'action correspondante dans les logs suivants
+                    const nextLogs = logs.slice(logs.indexOf(entry), logs.indexOf(entry) + 5);
+                    for (const nextEntry of nextLogs) {
+                        const nextMessage = nextEntry && nextEntry.message ? nextEntry.message : '';
+                        const decisionMatch = nextMessage.match(/\[DEBUG\]\[ACTION-DECISION\]\s*Account\s*(\w+):\s*(\d+)\s*actions/);
+                        if (decisionMatch && decisionMatch[1] === username) {
+                            const actionCount = parseInt(decisionMatch[2]);
+                            if (actionCount > 0) {
+                                // Ajouter des actions par défaut
+                                ['like', 'retweet', 'reply'].slice(0, actionCount).forEach(type => {
+                                    plannedActions.push({
+                                        type,
+                                        accountUsername: username,
+                                        targetTweetId: tweetId,
+                                        pseudo: 'detected',
+                                        scheduledTime: timestamp,
+                                        priority: 'normal'
+                                    });
+                                });
+                            }
+                            break;
+                        }
+                    }
+                }
+                
+                // Nouveau format: logs de résumé par batch de 10 actions
+                const batchSummaryMatch = message.match(/\[DEBUG\]\[BATCH_SUMMARY\]\s*Batch (\d+):\s*(\d+)\s*actions générées pour (\d+) comptes/);
+                if (batchSummaryMatch) {
+                    const batchNum = parseInt(batchSummaryMatch[1]);
+                    const actionCount = parseInt(batchSummaryMatch[2]);
+                    const accountCount = parseInt(batchSummaryMatch[3]);
+                    
+                    // Estimer les actions par type (basé sur les probabilités)
+                    const estimatedReplies = Math.ceil(actionCount * 0.7); // 70% replies
+                    const estimatedLikes = Math.ceil(actionCount * 0.2);   // 20% likes
+                    const estimatedRetweets = Math.ceil(actionCount * 0.1); // 10% retweets
+                    
+                    ['reply', 'like', 'retweet'].forEach((type, index) => {
+                        const count = [estimatedReplies, estimatedLikes, estimatedRetweets][index];
+                        for (let i = 0; i < count; i++) {
+                            plannedActions.push({
+                                type,
+                                accountUsername: `batch_${batchNum}_account_${i % accountCount + 1}`,
+                                targetTweetId: `batch_${batchNum}_tweet_${i + 1}`,
+                                pseudo: 'batch_summary',
+                                scheduledTime: timestamp,
+                                priority: 'normal'
+                            });
+                        }
                     });
-                });
-            } else {
-                throw new Error('Pas de comptes trouvés');
+                }
             }
-        } catch (accountError) {
-            console.log('[API] Fallback comptes génériques:', accountError.message);
-            // Fallback avec des comptes génériques plus réalistes
-            for (let i = 0; i < Math.max(totalAccounts, 1); i++) {
-                const isActive = i < activeAccounts;
-                accountsStatus.push({
-                    id: `account_${i + 1}`,
-                    username: `@compte_twitter_${i + 1}`,
-                    status: isActive ? 'active' : 'paused',
-                    lastAction: new Date(Date.now() - (300000 + i * 120000)).toISOString(),
-                    actionsPlanned: isActive ? Math.floor(actionsGenerated / Math.max(activeAccounts, 1)) : 0,
-                    authMethod: 'oauth1a',
-                    quotaUsed: isActive ? Math.floor(Math.random() * 50) : 0
-                });
-            }
+        } catch (logError) {
+            console.log('[API] Erreur lecture logs pour actions planifiées:', logError.message);
         }
         
-        // État de l'automatisation
-        const automationStatus = {
-            enabled: global.isAutomationEnabled || false,
-            scanning: global.isAutomationScanning || false,
-            lastScan: new Date().toISOString()
-        };
+        // Limiter les actions planifiées aux 20 plus récentes et trier par timestamp
+        const sortedPlannedActions = plannedActions
+            .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime))
+            .slice(0, 20);
         
-        const responseData = {
+        // Construire la réponse finale avec les vraies données
+        const response = {
             success: true,
             data: {
-                automationStatus,
-                accountsStatus,
-                detectedTweets,
-                plannedActions,
-                summary: {
-                    totalAccounts,
-                    activeAccounts,
-                    pausedAccounts: 0,
-                    tweetsToProcess: tweetsFound,
-                    totalPlannedActions: actionsGenerated
-                }
+                totalAccounts,
+                activeAccounts,
+                tweetsFound,
+                actionsGenerated: sortedPlannedActions.length,
+                plannedActions: sortedPlannedActions,
+                lastUpdate: new Date().toISOString()
             }
         };
-        
-        console.log('[QUEUE] Données préparées avec succès:', {
-            comptes: totalAccounts,
-            tweets: tweetsFound,
-            actions: actionsGenerated
-        });
-        
-        res.json(responseData);
-        
+
+        console.log(`[QUEUE] Réponse générée: ${totalAccounts} comptes, ${sortedPlannedActions.length} actions planifiées`);
+        res.json(response);
     } catch (error) {
-        console.error('[AUTOMATION-QUEUE] Erreur détaillée:', error);
-        
-        // Réponse de secours en cas d'erreur
-        res.json({
-            success: true,
+        console.error('[QUEUE] Erreur API automation-queue:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
             data: {
-                automationStatus: { enabled: false, scanning: false, lastScan: null },
-                accountsStatus: [],
-                detectedTweets: [],
-                plannedActions: [],
-                summary: {
-                    totalAccounts: 0,
-                    activeAccounts: 0,
-                    pausedAccounts: 0,
-                    tweetsToProcess: 0,
-                    totalPlannedActions: 0
-                }
+                totalAccounts: 0,
+                activeAccounts: 0,
+                tweetsFound: 0,
+                actionsGenerated: 0,
+                plannedActions: []
             }
         });
     }
+});
+
+// 🚀 ENDPOINT POUR MÉTRIQUES TEMPS RÉEL DU DASHBOARD
+app.get('/api/dashboard-metrics', (req, res) => {
+    try {
+        const automation = require('./services/automation');
+        const metrics = automation.getDashboardMetrics ? automation.getDashboardMetrics() : {
+            rawTweetsDetected: 0,
+            validTweetsAfterFilter: 0,
+            plannedActionsByAccount: {},
+            lastScanMetrics: {
+                timestamp: null,
+                tweetsProcessed: 0,
+                actionsGenerated: 0
+            }
+        };
+        
+        res.json({
+            success: true,
+            data: metrics,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('[DASHBOARD-METRICS] Erreur:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// 🚀 NOUVEAUX ENDPOINTS DE PERFORMANCE ET MONITORING
+const performanceEndpoints = require('./services/api-performance-endpoints');
+
+// API - Métriques système
+app.get('/api/performance/system', performanceEndpoints.getSystemMetrics);
+app.get('/api/performance/automation', performanceEndpoints.getAutomationMetrics);
+app.get('/api/performance/api', performanceEndpoints.getApiMetrics);
+app.get('/api/performance/errors', performanceEndpoints.getErrorMetrics);
+app.get('/api/performance/health', performanceEndpoints.getSystemHealth);
+app.get('/api/performance/report', performanceEndpoints.getPerformanceReport);
+
+// API - Logs optimisés
+app.get('/api/logs', performanceEndpoints.getLogs);
+app.get('/api/logs/stats', performanceEndpoints.getLogStats);
+app.get('/api/logs/export', performanceEndpoints.exportLogs);
+app.post('/api/logs/cleanup', performanceEndpoints.cleanupLogs);
+
+// API - Enregistrement de métriques
+app.post('/api/performance/record', performanceEndpoints.recordMetric);
+
+// Variables globales pour la persistance des métriques de scan
+let scanMetricsCache = {
+    tweetsFound: 0,
+    validTweets: 0,
+    batchesProcessed: 0,
+    lastScanTime: null,
+    breakdown: {
+        replies: 0,
+        retweets: 0,
+        originalTweets: 0
+    },
+    lastLogPosition: 0,
+    processedScans: new Set()
+};
+
+// Fonction pour sauvegarder les métriques
+function saveScanMetrics() {
+    const fs = require('fs');
+    const path = require('path');
+    try {
+        const metricsPath = path.join(__dirname, 'scan-metrics-cache.json');
+        const dataToSave = {
+            ...scanMetricsCache,
+            processedScans: Array.from(scanMetricsCache.processedScans)
+        };
+        fs.writeFileSync(metricsPath, JSON.stringify(dataToSave, null, 2));
+    } catch (error) {
+        console.error('Erreur sauvegarde métriques:', error);
+    }
+}
+
+// Fonction pour charger les métriques
+function loadScanMetrics() {
+    const fs = require('fs');
+    const path = require('path');
+    try {
+        const metricsPath = path.join(__dirname, 'scan-metrics-cache.json');
+        if (fs.existsSync(metricsPath)) {
+            const data = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
+            scanMetricsCache = {
+                ...data,
+                processedScans: new Set(data.processedScans || [])
+            };
+            console.log('[SCAN-METRICS] Cache chargé:', scanMetricsCache);
+        }
+    } catch (error) {
+        console.error('Erreur chargement métriques:', error);
+    }
+}
+
+// Charger les métriques au démarrage
+loadScanMetrics();
+
+// API - Métriques de scan avec persistance
+app.get('/api/scan-metrics', requireClientAuth, async (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        
+        // Lire les logs récents
+        const logPath = path.join(__dirname, 'auto-actions.log');
+        let logContent = '';
+        
+        try {
+            logContent = fs.readFileSync(logPath, 'utf8');
+        } catch (error) {
+            console.log('Erreur lecture logs:', error.message);
+            // Retourner les données en cache même si les logs ne sont pas accessibles
+            const efficiency = scanMetricsCache.tweetsFound > 0 ? 
+                Math.round((scanMetricsCache.validTweets / scanMetricsCache.tweetsFound) * 100) : 0;
+            
+            let formattedLastScan = 'Jamais';
+            if (scanMetricsCache.lastScanTime) {
+                const scanDate = new Date(scanMetricsCache.lastScanTime);
+                formattedLastScan = scanDate.toLocaleTimeString('fr-FR');
+            }
+            
+            return res.json({
+                success: true,
+                data: {
+                    tweetsFound: scanMetricsCache.tweetsFound,
+                    validTweets: scanMetricsCache.validTweets,
+                    efficiency,
+                    batchesProcessed: scanMetricsCache.batchesProcessed,
+                    lastScanTime: formattedLastScan,
+                    breakdown: scanMetricsCache.breakdown
+                }
+            });
+        }
+        
+        // Parser seulement les nouvelles lignes depuis la dernière position
+        const lines = logContent.split('\n');
+        const newLines = lines.slice(scanMetricsCache.lastLogPosition);
+        
+        for (const line of newLines) {
+            if (!line.trim()) continue;
+            
+            try {
+                let message = '';
+                let timestamp = null;
+                
+                if (line.startsWith('[')) {
+                    const logMatch = line.match(/^\[([^\]]+)\].*?\] (.+)$/);
+                }
+                
+                // Chercher les lignes de scan avec le pattern exact
+                const match = line.match(/\[SCAN\] (\d+) tweets filtrés → (\d+) valides \((\d+) replies, (\d+) retweets, (\d+) quotes, (\d+) autres\)/);
+                
+                if (match && timestamp) {
+                    const scanKey = `${timestamp}_${match[0]}`;
+                    
+                    if (!scanMetricsCache.processedScans.has(scanKey)) {
+                        scanMetricsCache.processedScans.add(scanKey);
+                        
+                        const tweetsFiltered = parseInt(match[1]);
+                        const validTweets = parseInt(match[2]);
+                        const replies = parseInt(match[3]);
+                        const retweets = parseInt(match[4]);
+                        const quotes = parseInt(match[5]);
+                        const autres = parseInt(match[6]);
+                        
+                        // Mettre à jour avec les données du dernier scan
+                        scanMetricsCache.tweetsFound = tweetsFiltered + validTweets;
+                        scanMetricsCache.validTweets = validTweets;
+                        scanMetricsCache.breakdown.replies = replies;
+                        scanMetricsCache.breakdown.retweets = retweets;
+                        scanMetricsCache.breakdown.alreadyProcessed = lastDedupCount;
+                        scanMetricsCache.batchesProcessed = scanMetricsCache.processedScans.size;
+                        
+                        if (!scanMetricsCache.lastScanTime || new Date(timestamp) > new Date(scanMetricsCache.lastScanTime)) {
+                            scanMetricsCache.lastScanTime = timestamp;
+                        }
+                    }
+                }
+                
+            } catch (parseError) {
+                continue;
+            }
+        }
+        
+        // Mettre à jour la position dans le log
+        scanMetricsCache.lastLogPosition = lines.length;
+        
+        // Sauvegarder le cache
+        saveScanMetrics();
+        
+        // Calculer l'efficacité
+        const efficiency = scanMetricsCache.tweetsFound > 0 ? 
+            Math.round((scanMetricsCache.validTweets / scanMetricsCache.tweetsFound) * 100) : 0;
+        
+        // Formater la dernière heure de scan
+        let formattedLastScan = 'Jamais';
+        if (scanMetricsCache.lastScanTime) {
+            const scanDate = new Date(scanMetricsCache.lastScanTime);
+            formattedLastScan = scanDate.toLocaleTimeString('fr-FR');
+        }
+        
+        res.json({
+            success: true,
+            data: {
+                tweetsFound: scanMetricsCache.tweetsFound,
+                validTweets: scanMetricsCache.validTweets,
+                efficiency,
+                batchesProcessed: scanMetricsCache.batchesProcessed,
+                lastScanTime: formattedLastScan,
+                breakdown: scanMetricsCache.breakdown
+            }
+        });
+        
+    } catch (error) {
+        console.error('Erreur API scan-metrics:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erreur interne du serveur'
+        });
+    }
+});
+
+// API - Prochaines actions différées
+app.get('/api/next-actions', async (req, res) => {
+    try {
+        const nextActions = [];
+        
+        // Méthode 1: Accéder aux variables globales directement
+        try {
+            // Vérifier si actionScheduler existe globalement
+            if (global.actionScheduler) {
+                console.log('[NEXT-ACTIONS] ActionScheduler trouvé globalement');
+                const scheduler = global.actionScheduler;
+                
+                if (scheduler.deferredActions && scheduler.deferredActions.size > 0) {
+                    console.log('[NEXT-ACTIONS] Actions différées trouvées:', scheduler.deferredActions.size);
+                    
+                    for (const [accountId, actions] of scheduler.deferredActions.entries()) {
+                        console.log(`[NEXT-ACTIONS] Compte ${accountId}: ${actions.length} actions`);
+                        for (const action of actions) {
+                            const timeUntil = Math.max(0, action.scheduledTime - Date.now());
+                            const scheduledDate = new Date(action.scheduledTime);
+                            
+                            nextActions.push({
+                                account: action.acc?.username || `Account ${accountId}`,
+                                accountId: accountId,
+                                actionType: action.type,
+                                tweetId: action.tweetId,
+                                scheduledTime: scheduledDate.toLocaleString('fr-FR'),
+                                scheduledTimeShort: scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                                timeUntil: timeUntil,
+                                timeUntilText: timeUntil < 60000 ? 'maintenant' : 
+                                              timeUntil < 3600000 ? `${Math.round(timeUntil/60000)}min` :
+                                              `${Math.floor(timeUntil/3600000)}h${Math.round((timeUntil%3600000)/60000)}min`,
+                                tweetLink: `https://twitter.com/i/web/status/${action.tweetId}`,
+                                addedAt: action.addedAt,
+                                source: 'scheduler'
+                            });
+                        }
+                    }
+                } else {
+                    console.log('[NEXT-ACTIONS] Pas d\'actions différées dans le scheduler global');
+                }
+            } else {
+                console.log('[NEXT-ACTIONS] ActionScheduler non trouvé globalement');
+                
+                // Fallback: essayer via require
+                const automationModule = require('./services/automation.js');
+                console.log('[NEXT-ACTIONS] Module automation chargé:', !!automationModule);
+                console.log('[NEXT-ACTIONS] ActionScheduler exporté:', !!automationModule.actionScheduler);
+                
+                if (automationModule.actionScheduler) {
+                    const scheduler = automationModule.actionScheduler;
+                    console.log('[NEXT-ACTIONS] DeferredActions size:', scheduler.deferredActions?.size || 0);
+                }
+            }
+            
+        } catch (moduleError) {
+            console.log('[NEXT-ACTIONS] Erreur accès scheduler:', moduleError.message);
+        }
+        
+        // Méthode 2: Aucune action trouvée
+        if (nextActions.length === 0) {
+            console.log('[NEXT-ACTIONS] Aucune action différée trouvée dans le scheduler');
+            
+            // Essayer aussi de parser les logs
+            try {
+                const fs = require('fs');
+                const path = require('path');
+                const logPath = path.join(__dirname, 'auto-actions.log');
+                
+                if (fs.existsSync(logPath)) {
+                    const logContent = fs.readFileSync(logPath, 'utf8');
+                    const lines = logContent.split('\n').slice(-1000);
+                    
+                    console.log('[NEXT-ACTIONS] Analyse des logs, lignes trouvées:', lines.length);
+                    
+                    const deferredActions = [];
+                    
+                    for (const line of lines) {
+                        if (line.includes('différé') || line.includes('Action différée')) {
+                            console.log('[NEXT-ACTIONS] Ligne avec action différée trouvée:', line.substring(0, 100));
+                            
+                            try {
+                                const timestampMatch = line.match(/^\[([^\]]+)\]/);
+                                const usernameMatch = line.match(/\[([^\]]+)\] (\w+) différé/);
+                                const actionMatch = line.match(/(Like|Retweet|Reply) différé/i);
+                                
+                                if (timestampMatch && usernameMatch && actionMatch) {
+                                    const logTime = new Date(timestampMatch[1]);
+                                    const username = usernameMatch[1];
+                                    const actionType = actionMatch[1].toLowerCase();
+                                    
+                                    const estimatedTime = new Date(logTime.getTime() + (15 * 60 * 1000));
+                                    const timeUntil = Math.max(0, estimatedTime.getTime() - Date.now());
+                                    
+                                    if (timeUntil > 0) {
+                                        deferredActions.push({
+                                            account: username,
+                                            accountId: 'unknown',
+                                            actionType: actionType,
+                                            tweetId: 'unknown',
+                                            scheduledTime: estimatedTime.toLocaleString('fr-FR'),
+                                            scheduledTimeShort: estimatedTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                                            timeUntil: timeUntil,
+                                            timeUntilText: timeUntil < 60000 ? 'maintenant' : 
+                                                          timeUntil < 3600000 ? `${Math.round(timeUntil/60000)}min` :
+                                                          `${Math.floor(timeUntil/3600000)}h${Math.round((timeUntil%3600000)/60000)}min`,
+                                            tweetLink: '#',
+                                            addedAt: logTime.toISOString(),
+                                            source: 'logs'
+                                        });
+                                    }
+                                }
+                            } catch (parseError) {
+                                continue;
+                            }
+                        }
+                    }
+                    
+                    if (deferredActions.length > 0) {
+                        nextActions.push(...deferredActions);
+                        console.log('[NEXT-ACTIONS] Actions trouvées dans les logs:', deferredActions.length);
+                    }
+                }
+            } catch (logError) {
+                console.log('[NEXT-ACTIONS] Erreur lecture logs:', logError.message);
+            }
+        }
+        
+        // Trier par heure d'exécution et prendre les 5 prochaines
+        const sortedActions = nextActions
+            .sort((a, b) => a.timeUntil - b.timeUntil)
+            .slice(0, 5);
+        
+        console.log('[NEXT-ACTIONS] Actions retournées:', sortedActions.length);
+        
+        res.json({
+            success: true,
+            data: {
+                nextActions: sortedActions,
+                totalPending: nextActions.length
+            }
+        });
+        
+    } catch (error) {
+        console.error('Erreur API next-actions:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erreur interne du serveur'
+        });
+    }
+});
+
+// Middleware global pour rediriger les routes non protégées vers access.html
+app.use((req, res, next) => {
+    // Exclure les routes d'invitation OAuth et les callbacks
+    const excludedPaths = [
+        '/invite/',
+        '/oauth2/callback',
+        '/api/auth/twitter/callback',
+        '/oauth-success.html',
+        '/access.html',
+        '/access',
+        '/api/client-auth',
+        '/public/',
+        '/components/',
+        '/Content/',
+        '/ui.js',
+        '/index.html'
+    ];
+    
+    // Vérifier si la route actuelle doit être exclue
+    const shouldExclude = excludedPaths.some(path => req.path.startsWith(path));
+    
+    if (shouldExclude) {
+        return next();
+    }
+    
+    // Pour les autres routes, appliquer la protection
+    return requireClientAuth(req, res, next);
 });
 
 // Dernière API legacy supprimée

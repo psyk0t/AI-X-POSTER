@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { TwitterApi } = require('twitter-api-v2');
-const logToFile = require('./logs').logToFile;
+const { logToFile } = require('./logs-optimized');
+const { TimerManager } = require('./timer-utils');
 
 class InfluencerDetector {
     constructor() {
@@ -10,6 +11,7 @@ class InfluencerDetector {
         this.twitterClient = null;
         this.monitoredTweets = new Set(); // Tweets à surveiller
         this.webhookCallbacks = []; // Callbacks pour les webhooks
+        this.timers = new TimerManager('influencer-detector');
         this.loadData();
         
         // Initialiser automatiquement le client Twitter avec le Bearer Token du .env
@@ -207,26 +209,42 @@ class InfluencerDetector {
     
     // Démarrer le monitoring en continu
     startContinuousMonitoring(intervalMinutes = 60) {
+        // Nettoyage de l'ancien intervalle (compat)
         if (this.monitoringInterval) {
             clearInterval(this.monitoringInterval);
+            this.monitoringInterval = null;
         }
-        
-        this.monitoringInterval = setInterval(async () => {
+
+        // Utiliser TimerManager
+        this.timers.setInterval('monitor', async () => {
             for (const tweetData of this.monitoredTweets) {
                 await this.monitorTweetInteractions(tweetData.id);
             }
-        }, intervalMinutes * 60 * 1000);
-        
+        }, intervalMinutes * 60 * 1000, { unref: true });
+
         logToFile(`[INFLUENCER] Started continuous monitoring (${intervalMinutes}min intervals)`);
     }
     
     // Arrêter le monitoring
     stopContinuousMonitoring() {
+        // Arrêt via TimerManager
+        if (this.timers) this.timers.clearInterval('monitor');
+        // Compatibilité avec ancien champ
         if (this.monitoringInterval) {
             clearInterval(this.monitoringInterval);
             this.monitoringInterval = null;
-            logToFile('[INFLUENCER] Stopped continuous monitoring');
         }
+        logToFile('[INFLUENCER] Stopped continuous monitoring');
+    }
+
+    // Cleanup global (timers)
+    cleanup() {
+        if (this.timers) this.timers.clearAll();
+        if (this.monitoringInterval) {
+            clearInterval(this.monitoringInterval);
+            this.monitoringInterval = null;
+        }
+        logToFile('[INFLUENCER] Cleanup done');
     }
     
     // Formater les nombres

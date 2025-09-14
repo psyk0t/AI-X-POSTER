@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Test Analytics</title>
+    <script src="components/floating-automation-button.js"></script>
 </head>
 <body>
     <h1>Test Analytics Frontend</h1>
@@ -26,9 +27,30 @@
             const resultDiv = document.getElementById('result');
             resultDiv.innerHTML = 'Chargement...';
             
+            // Configuration d'authentification
+            const urlParams = new URLSearchParams(window.location.search);
+            const tokenFromUrl = urlParams.get('token');
+            let clientToken = localStorage.getItem('clientToken');
+            
+            if (tokenFromUrl) {
+                localStorage.setItem('clientToken', tokenFromUrl);
+                clientToken = tokenFromUrl;
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+            
+            if (!clientToken) {
+                window.location.href = '/access.html';
+                return;
+            }
+            
             try {
                 console.log('[TEST] Appel API:', `${API_BASE_URL}/api/analytics/dashboard`);
-                const response = await fetch(`${API_BASE_URL}/api/analytics/dashboard`);
+                const response = await fetch(`${API_BASE_URL}/api/analytics/dashboard`, {
+                    headers: {
+                        'Authorization': `Bearer ${clientToken}`
+                    }
+                });
                 console.log('[TEST] Réponse reçue:', response.status);
                 
                 const data = await response.json();

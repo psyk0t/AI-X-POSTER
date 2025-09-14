@@ -4,22 +4,22 @@
   "deployedAt": "2025-08-20T10:10:00Z",
   "clientId": "psyk0t-raid-client",
   "globalPack": {
-    "totalActions": 1000,
-    "usedActions": 268,
-    "remainingActions": 732,
+    "totalActions": 10000,
+    "usedActions": 280,
+    "remainingActions": 9720,
     "purchaseDate": "2025-08-13",
     "expiryDate": null,
     "packType": "premium"
   },
   "dailyQuotas": {
-    "dailyLimit": 1200,
-    "lastReset": "2025-08-22",
+    "dailyLimit": 300,
+    "lastReset": "2025-09-14",
     "used": 0,
-    "usedToday": 268,
+    "usedToday": 44,
     "distribution": {
-      "like": 42,
-      "retweet": 18,
-      "reply": 208
+      "like": 22,
+      "retweet": 4,
+      "reply": 18
     }
   },
   "actionProbabilities": {
@@ -28,20 +28,78 @@
     "retweet": 0.05
   },
   "connectedAccounts": {
+    "68995259": {
+      "username": "yasuo_saito",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-09-09T14:08:45.847Z",
+      "actionsUsed": 0,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": false,
+      "lastReset": "2025-09-09",
+      "disconnectedAt": "2025-09-09T14:20:34.384Z"
+    },
     "153720161": {
       "username": "psyk0t",
       "authMethod": "oauth2",
       "connectedAt": "2025-08-20T08:42:24.871Z",
-      "actionsUsed": 76,
+      "actionsUsed": 43,
       "dailyUsed": {
-        "like": 7,
-        "retweet": 3,
-        "reply": 45
+        "like": 3,
+        "retweet": 0,
+        "reply": 5
       },
       "isActive": true,
       "lastReset": "2025-08-20",
-      "lastAction": "2025-08-22T16:06:09.857Z",
-      "disconnectedAt": "2025-08-21T15:44:21.843Z"
+      "lastAction": "2025-09-14T10:08:41.444Z",
+      "disconnectedAt": "2025-09-13T06:07:34.163Z"
+    },
+    "178594542": {
+      "username": "yajihirn",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-29T09:15:54.829Z",
+      "actionsUsed": 0,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": false,
+      "lastReset": "2025-08-29",
+      "lastAction": "2025-08-29T14:40:10.659Z",
+      "disconnectedAt": "2025-09-02T06:56:04.115Z"
+    },
+    "242066350": {
+      "username": "wow26aya",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-09-08T16:14:13.076Z",
+      "actionsUsed": 0,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": true,
+      "lastReset": "2025-09-08",
+      "disconnectedAt": "2025-09-09T14:20:34.385Z"
+    },
+    "271313857": {
+      "username": "tra_shoto",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-28T16:55:16.593Z",
+      "actionsUsed": 0,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": true,
+      "lastReset": "2025-08-28",
+      "lastAction": "2025-09-06T11:01:06.693Z",
+      "disconnectedAt": "2025-09-09T14:20:34.385Z"
     },
     "303900949": {
       "username": "wicce0710",
@@ -55,7 +113,23 @@
       },
       "isActive": false,
       "lastReset": "2025-08-20",
-      "lastAction": "2025-08-20T12:30:24.674Z"
+      "lastAction": "2025-08-29T14:41:32.944Z",
+      "disconnectedAt": "2025-09-02T06:56:04.116Z"
+    },
+    "332023654": {
+      "username": "yeixon2",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-26T08:46:38.751Z",
+      "actionsUsed": 0,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": true,
+      "lastReset": "2025-08-26",
+      "disconnectedAt": "2025-09-03T22:05:18.912Z",
+      "lastAction": "2025-09-03T21:26:22.594Z"
     },
     "460206587": {
       "username": "uw514",
@@ -68,54 +142,60 @@
         "reply": 0
       },
       "isActive": false,
-      "lastReset": "2025-08-20"
+      "lastReset": "2025-08-20",
+      "lastAction": "2025-09-06T11:03:10.176Z",
+      "disconnectedAt": "2025-09-06T13:13:37.596Z"
     },
     "547832333": {
       "username": "yashi190",
       "authMethod": "oauth2",
       "connectedAt": "2025-08-20T09:54:05.208Z",
-      "actionsUsed": 84,
+      "actionsUsed": 47,
       "dailyUsed": {
-        "like": 10,
-        "retweet": 6,
-        "reply": 61
+        "like": 7,
+        "retweet": 1,
+        "reply": 4
       },
       "isActive": true,
       "lastReset": "2025-08-20",
-      "lastAction": "2025-08-22T16:12:50.746Z"
+      "lastAction": "2025-09-14T10:22:10.652Z",
+      "disconnectedAt": "2025-09-13T06:07:34.164Z"
     },
-    "1032493598": {
-      "username": "nbenavidesribic",
+    "566051121": {
+      "username": "u_vers2",
       "authMethod": "oauth2",
-      "connectedAt": "2025-08-20T19:07:47.390Z",
-      "actionsUsed": 35,
+      "connectedAt": "2025-09-06T17:57:04.048Z",
+      "actionsUsed": 0,
       "dailyUsed": {
         "like": 0,
         "retweet": 0,
         "reply": 0
       },
-      "isActive": false,
-      "lastReset": "2025-08-20",
-      "lastAction": "2025-08-21T00:09:15.483Z"
+      "isActive": true,
+      "lastReset": "2025-09-06",
+      "lastAction": "2025-09-08T05:41:57.287Z",
+      "disconnectedAt": "2025-09-09T14:20:34.386Z"
     },
-    "2440510039": {
-      "username": "tuikyasuyoutori",
+    "612443070": {
+      "username": "toooonpi",
       "authMethod": "oauth2",
-      "connectedAt": "2025-08-22T06:52:36.766Z",
-      "actionsUsed": 83,
+      "connectedAt": "2025-08-26T09:03:38.207Z",
+      "actionsUsed": 0,
       "dailyUsed": {
-        "like": 13,
-        "retweet": 4,
-        "reply": 66
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
       },
       "isActive": true,
-      "lastReset": "2025-08-22",
-      "lastAction": "2025-08-22T16:09:04.108Z"
+      "lastReset": "2025-08-26",
+      "disconnectedAt": "2025-09-09T14:20:34.386Z",
+      "lastAction": "2025-09-08T05:43:05.277Z",
+      "reconnectedAt": "2025-09-13T10:43:20.750Z"
     },
-    "2754858140": {
-      "username": "yudakumgm",
+    "708949771": {
+      "username": "vvvkvvv",
       "authMethod": "oauth2",
-      "connectedAt": "2025-08-20T09:56:07.472Z",
+      "connectedAt": "2025-09-05T06:55:20.965Z",
       "actionsUsed": 0,
       "dailyUsed": {
         "like": 0,
@@ -123,23 +203,129 @@
         "reply": 0
       },
       "isActive": false,
+      "lastReset": "2025-09-05",
+      "lastAction": "2025-09-06T10:56:59.460Z",
+      "disconnectedAt": "2025-09-06T13:13:37.597Z"
+    },
+    "775959787": {
+      "username": "wrestw",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-09-09T15:09:06.629Z",
+      "actionsUsed": 5,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": true,
+      "lastReset": "2025-09-09",
+      "lastAction": "2025-09-09T15:14:34.840Z",
+      "disconnectedAt": "2025-09-13T06:07:34.164Z"
+    },
+    "1032493598": {
+      "username": "nbenavidesribic",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-20T19:07:47.390Z",
+      "actionsUsed": 41,
+      "dailyUsed": {
+        "like": 5,
+        "retweet": 1,
+        "reply": 0
+      },
+      "isActive": true,
       "lastReset": "2025-08-20",
-      "lastAction": "2025-08-20T16:28:11.764Z"
+      "lastAction": "2025-09-14T10:18:25.032Z",
+      "disconnectedAt": "2025-09-06T13:13:37.597Z"
+    },
+    "1040056033": {
+      "username": "totororo1161",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-26T17:18:27.403Z",
+      "actionsUsed": 44,
+      "dailyUsed": {
+        "like": 3,
+        "retweet": 1,
+        "reply": 5
+      },
+      "isActive": true,
+      "lastReset": "2025-08-26",
+      "lastAction": "2025-09-14T10:18:34.993Z",
+      "disconnectedAt": "2025-09-13T06:07:34.164Z"
+    },
+    "1427896004": {
+      "username": "waruinekotan_4",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-09-09T14:10:30.263Z",
+      "actionsUsed": 0,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": false,
+      "lastReset": "2025-09-09",
+      "disconnectedAt": "2025-09-09T14:20:34.387Z"
+    },
+    "2440510039": {
+      "username": "tuikyasuyoutori",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-22T06:52:36.766Z",
+      "actionsUsed": 0,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": false,
+      "lastReset": "2025-08-22",
+      "lastAction": "2025-08-23T21:07:28.255Z",
+      "disconnectedAt": "2025-09-09T14:20:34.387Z"
+    },
+    "2717811578": {
+      "username": "w3kirinyan",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-09-02T06:51:39.177Z",
+      "actionsUsed": 1,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": true,
+      "lastReset": "2025-09-02",
+      "lastAction": "2025-09-13T11:36:52.757Z",
+      "disconnectedAt": "2025-09-06T13:13:37.597Z"
+    },
+    "2754858140": {
+      "username": "yudakumgm",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-08-20T09:56:07.472Z",
+      "actionsUsed": 1,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": true,
+      "lastReset": "2025-08-20",
+      "lastAction": "2025-09-13T10:45:07.211Z",
+      "disconnectedAt": "2025-09-09T10:42:52.957Z",
+      "reconnectedAt": "2025-09-13T10:43:20.750Z"
     },
     "1766748886276927488": {
       "username": "PrinceNganooSOL",
       "authMethod": "oauth2",
       "connectedAt": "2025-08-20T08:43:34.868Z",
-      "actionsUsed": 53,
+      "actionsUsed": 50,
       "dailyUsed": {
-        "like": 12,
-        "retweet": 5,
-        "reply": 36
+        "like": 4,
+        "retweet": 1,
+        "reply": 4
       },
       "isActive": true,
       "lastReset": "2025-08-20",
-      "lastAction": "2025-08-22T13:00:20.010Z",
-      "disconnectedAt": "2025-08-22T06:50:09.866Z",
+      "lastAction": "2025-09-14T10:17:14.131Z",
+      "disconnectedAt": "2025-09-13T06:07:34.165Z",
       "reconnectedAt": "2025-08-21T15:48:50.331Z"
     },
     "test_account_123": {
@@ -159,7 +345,7 @@
       "username": "sim_user_1",
       "authMethod": "oauth2",
       "connectedAt": "2025-08-21T07:40:12.899Z",
-      "actionsUsed": 270,
+      "actionsUsed": 0,
       "dailyUsed": {
         "like": 0,
         "retweet": 0,
@@ -173,7 +359,7 @@
       "username": "sim_user_2",
       "authMethod": "oauth2",
       "connectedAt": "2025-08-21T07:40:12.901Z",
-      "actionsUsed": 270,
+      "actionsUsed": 0,
       "dailyUsed": {
         "like": 0,
         "retweet": 0,
@@ -187,7 +373,7 @@
       "username": "sim_user_3",
       "authMethod": "oauth2",
       "connectedAt": "2025-08-21T07:40:12.903Z",
-      "actionsUsed": 270,
+      "actionsUsed": 0,
       "dailyUsed": {
         "like": 0,
         "retweet": 0,
@@ -196,12 +382,28 @@
       "isActive": false,
       "lastReset": "2025-08-21",
       "lastAction": "2025-08-21T07:40:13.954Z"
+    },
+    "1950473716259049473": {
+      "username": "HFiolle",
+      "authMethod": "oauth2",
+      "connectedAt": "2025-09-06T13:10:22.584Z",
+      "actionsUsed": 1,
+      "dailyUsed": {
+        "like": 0,
+        "retweet": 0,
+        "reply": 0
+      },
+      "isActive": true,
+      "lastReset": "2025-09-06",
+      "lastAction": "2025-09-09T15:12:12.202Z",
+      "disconnectedAt": "2025-09-13T06:07:34.165Z",
+      "reconnectedAt": "2025-09-13T10:43:20.750Z"
     }
   },
   "allocation": {
-    "perAccountQuota": 219,
-    "perAccountDaily": 300,
-    "lastRecalculation": "2025-08-22T12:07:48.607Z"
+    "perAccountQuota": 710,
+    "perAccountDaily": 35,
+    "lastRecalculation": "2025-09-13T11:19:22.129Z"
   },
   "restrictions": {
     "clientCanModify": true,

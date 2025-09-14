@@ -13,8 +13,13 @@ let logsCache = {
     totalLogs: 0
 };
 
+// Throttling pour HEARTBEAT
+let lastHeartbeat = 0;
+
 const LOG_FILE_PATH = path.join(__dirname, '..', 'auto-actions.log');
 const MAX_CACHE_SIZE = 1000;
+// Taille max lue lors d'un rechargement complet (lecture en tail uniquement)
+const TAIL_MAX_BYTES = 4 * 1024 * 1024; // 4MB
 
 /**
  * Service de gestion des logs - Version optimisée
@@ -53,6 +58,16 @@ function logToFile(data, type = 'system', level = 'info', metadata = {}) {
     
     // Support legacy : si data est une string, on la convertit
     if (typeof data === 'string') {
+        // Filtrer les messages HEARTBEAT répétitifs pour réduire la pollution
+        if (data.includes('[HEARTBEAT]')) {
+            // Throttle HEARTBEAT: ne garder qu'1 message toutes les 2 minutes
+            const now = Date.now();
+            if (!lastHeartbeat || now - lastHeartbeat < 120000) {
+                if (lastHeartbeat) return; // Skip ce heartbeat
+            }
+            lastHeartbeat = now;
+        }
+        
         logEntry = {
             timestamp,
             type: extractTypeFromLegacyMessage(data) || type,
@@ -273,13 +288,36 @@ function reloadCompleteCache() {
             logsCache = { logs: [], lastFileSize: 0, lastModified: 0, totalLogs: 0 };
             return;
         }
-        
-        const data = fs.readFileSync(LOG_FILE_PATH, 'utf-8');
+
+        // Stat du fichier pour lecture en tail seulement
+        const stats = fs.statSync(LOG_FILE_PATH);
+        const fileSize = stats.size;
+        const lastModified = stats.mtime.getTime();
+
+        const start = Math.max(0, fileSize - TAIL_MAX_BYTES);
+        let data = '';
+
+        if (start > 0) {
+            // Lecture partielle (tail)
+            const fd = fs.openSync(LOG_FILE_PATH, 'r');
+            try {
+                const length = fileSize - start;
+                const buffer = Buffer.alloc(length);
+                fs.readSync(fd, buffer, 0, length, start);
+                data = buffer.toString('utf-8');
+            } finally {
+                fs.closeSync(fd);
+            }
+        } else {
+            // Petit fichier: lecture complète
+            data = fs.readFileSync(LOG_FILE_PATH, 'utf-8');
+        }
+
         const lines = data.trim().split('\n').filter(line => line.trim());
-        
+
         logsCache.logs = [];
         logsCache.totalLogs = 0;
-        
+
         for (const line of lines) {
             try {
                 // Essayer de parser en JSON d'abord
@@ -293,7 +331,11 @@ function reloadCompleteCache() {
                 }
             }
         }
-        
+
+        // Mettre à jour les métadonnées du cache
+        logsCache.lastFileSize = fileSize;
+        logsCache.lastModified = lastModified;
+
     } catch (error) {
         console.error('[LOG SERVICE] Erreur rechargement cache:', error);
     }
@@ -392,8 +434,15 @@ function initializeLogService() {
 // Initialiser le service au chargement
 initializeLogService();
 
+// Fonction pushLiveLog manquante - ajout temporaire
+function pushLiveLog(message) {
+    console.log(`[LIVE_LOG] ${message}`);
+    logToFile(message);
+}
+
 module.exports = {
     logToFile,
+    pushLiveLog,
     getFilteredLogsFromFile,
     generateDownloadableLogsContent,
     getLogsIncremental,

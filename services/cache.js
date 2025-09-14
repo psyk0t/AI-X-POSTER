@@ -21,6 +21,15 @@ class CacheService {
      * Initialise la connexion Redis
      */
     async initialize() {
+        // 🚀 DÉSACTIVATION TEMPORAIRE REDIS POUR PERFORMANCE
+        const REDIS_ENABLED = false;
+        
+        if (!REDIS_ENABLED) {
+            logToFile('[CACHE] Redis désactivé temporairement - Mode dégradé activé');
+            this.isConnected = false;
+            return;
+        }
+        
         try {
             // Configuration Redis avec fallback
             const redisConfig = {
@@ -109,6 +118,35 @@ class CacheService {
      */
     isAvailable() {
         return this.isConnected && this.client;
+    }
+
+    /**
+     * Stocke un objet JSON arbitraire avec TTL
+     */
+    async setJSON(key, value, ttlSeconds = 300) {
+        if (!this.isAvailable()) return false;
+        try {
+            const payload = JSON.stringify(value);
+            await this.client.setEx(key, ttlSeconds, payload);
+            return true;
+        } catch (error) {
+            logToFile(`[CACHE] Erreur setJSON(${key}): ${error.message}`);
+            return false;
+        }
+    }
+
+    /**
+     * Récupère un objet JSON arbitraire
+     */
+    async getJSON(key) {
+        if (!this.isAvailable()) return null;
+        try {
+            const raw = await this.client.get(key);
+            return raw ? JSON.parse(raw) : null;
+        } catch (error) {
+            logToFile(`[CACHE] Erreur getJSON(${key}): ${error.message}`);
+            return null;
+        }
     }
 
     /**

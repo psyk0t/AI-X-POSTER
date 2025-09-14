@@ -1,0 +1,14 @@
+{
+  "clientId": "demo-client",
+  "name": "Demo Client",
+  "hashedPassword": "$2b$12$pVaOHcfsYql7pKQQEemJsefLqg3R68gyQ60whf/tY7DmO6tKBdFPe",
+  "isActive": true,
+  "createdAt": "2025-09-08T17:46:09.492Z",
+  "lastLogin": "2025-09-09T14:05:02.715Z",
+  "permissions": [
+    "dashboard",
+    "automation",
+    "accounts",
+    "analytics"
+  ]
+}

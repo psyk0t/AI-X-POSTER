@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Monitor - X-AutoRaider</title>
+    <script src="components/navbar.js"></script>
+    <script src="components/floating-automation-button.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .performance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .metric-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #00d4ff;
+            margin: 10px 0;
+        }
+        
+        .metric-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .health-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .health-healthy { background-color: #00ff88; }
+        .health-warning { background-color: #ffaa00; }
+        .health-critical { background-color: #ff4444; }
+        
+        .chart-container {
+            height: 200px;
+            margin: 20px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .log-viewer {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px 10px;
+            border-radius: 5px;
+            border-left: 3px solid transparent;
+        }
+        
+        .log-info { border-left-color: #00d4ff; }
+        .log-warn { border-left-color: #ffaa00; background: rgba(255, 170, 0, 0.1); }
+        .log-error { border-left-color: #ff4444; background: rgba(255, 68, 68, 0.1); }
+        .log-success { border-left-color: #00ff88; background: rgba(0, 255, 136, 0.1); }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+        }
+        
+        .error-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .error-item {
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid rgba(255, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .error-timestamp {
+            font-size: 0.8em;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 5px;
+        }
+        
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 25px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .toggle-switch.active {
+            background: #00d4ff;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 21px;
+            height: 21px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(25px);
+        }
+
+        /* Floating buttons - unified styling */
+        .floating-btn {
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .floating-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .automation-control-btn {
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .automation-control-btn.stop {
+            background: linear-gradient(45deg, #dc3545, #e74c3c);
+            animation: pulse-running 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-running {
+            0%, 100% {
+                box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 6px 25px rgba(220, 53, 69, 0.7);
+                transform: scale(1.05);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .floating-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 1rem;
+            }
+            
+            .automation-control-btn {
+                bottom: 20px;
+                right: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header avec navigation -->
+    <header class="main-header">
+        <div class="header-content">
+            <div class="logo-section">
+                <h1>🚀 Performance Monitor</h1>
+                <p>Surveillance en temps réel du système</p>
+            </div>
+            <nav class="header-nav">
+                <a href="index.html" class="nav-link">🏠 Accueil</a>
+                <a href="dashboard.html" class="nav-link">📊 Dashboard</a>
+                <a href="access.html" class="nav-link">🔑 Comptes</a>
+                <a href="performance-dashboard.html" class="nav-link active">⚡ Performance</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Contrôles -->
+        <div class="controls">
+            <button class="btn" onclick="refreshAllMetrics()">🔄 Actualiser</button>
+            <button class="btn btn-success" onclick="exportLogs()">📥 Exporter Logs</button>
+            <button class="btn btn-danger" onclick="cleanupLogs()">🧹 Nettoyer Logs</button>
+            
+            <div class="auto-refresh">
+                <span>Auto-refresh:</span>
+                <div class="toggle-switch" id="autoRefreshToggle" onclick="toggleAutoRefresh()">
+                    <div class="toggle-slider"></div>
+                </div>
+                <span id="refreshStatus">Désactivé</span>
+            </div>
+        </div>
+
+        <!-- État de santé global -->
+        <div class="card">
+            <h2>🩺 État de Santé du Système</h2>
+            <div id="systemHealth" class="performance-grid">
+                <div class="metric-card">
+                    <div class="metric-label">État Global</div>
+                    <div class="metric-value" id="healthStatus">
+                        <span class="health-indicator health-healthy"></span>
+                        Chargement...
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Uptime</div>
+                    <div class="metric-value" id="systemUptime">--</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Mémoire</div>
+                    <div class="metric-value" id="memoryUsage">--%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Taux d'Erreur</div>
+                    <div class="metric-value" id="errorRate">--%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Métriques d'automation -->
+        <div class="card">
+            <h2>🤖 Métriques d'Automation</h2>
+            <div class="performance-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Scans Totaux</div>
+                    <div class="metric-value" id="totalScans">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Taux de Succès</div>
+                    <div class="metric-value" id="scanSuccessRate">0%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Tweets Traités</div>
+                    <div class="metric-value" id="tweetsProcessed">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Actions Générées</div>
+                    <div class="metric-value" id="actionsGenerated">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Durée Moyenne</div>
+                    <div class="metric-value" id="avgScanDuration">0s</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Efficacité</div>
+                    <div class="metric-value" id="automationEfficiency">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Métriques API -->
+        <div class="card">
+            <h2>🌐 Métriques API</h2>
+            <div class="performance-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Requêtes Totales</div>
+                    <div class="metric-value" id="totalRequests">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Taux de Succès</div>
+                    <div class="metric-value" id="apiSuccessRate">0%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Temps de Réponse</div>
+                    <div class="metric-value" id="avgResponseTime">0ms</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Rate Limits</div>
+                    <div class="metric-value" id="rateLimitHits">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Erreurs récentes -->
+        <div class="card">
+            <h2>🚨 Erreurs Récentes</h2>
+            <div class="performance-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Erreurs Totales</div>
+                    <div class="metric-value" id="totalErrors">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Erreurs Critiques</div>
+                    <div class="metric-value" id="criticalErrors">0</div>
+                </div>
+            </div>
+            <div id="recentErrors" class="error-list">
+                <!-- Les erreurs seront chargées ici -->
+            </div>
+        </div>
+
+        <!-- Logs en temps réel -->
+        <div class="card">
+            <h2>📝 Logs en Temps Réel</h2>
+            <div class="controls">
+                <select id="logLevel" onchange="filterLogs()">
+                    <option value="">Tous les niveaux</option>
+                    <option value="ERROR">Erreurs</option>
+                    <option value="WARN">Avertissements</option>
+                    <option value="INFO">Informations</option>
+                    <option value="SUCCESS">Succès</option>
+                </select>
+                <input type="text" id="logSearch" placeholder="Rechercher dans les logs..." onkeyup="filterLogs()">
+                <button class="btn" onclick="clearLogViewer()">🗑️ Vider</button>
+            </div>
+            <div id="logViewer" class="log-viewer">
+                <!-- Les logs seront chargés ici -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Automation Control Button -->
+    <button class="floating-btn automation-control-btn" id="automationControlBtn" onclick="toggleAutomation()" title="Lancer/Arrêter l'automation">
+        <i class="fas fa-play" id="automationIcon"></i>
+    </button>
+
+    <script>
+        const API_BASE_URL = window.location.origin;
+        let autoRefreshInterval = null;
+        let isAutoRefreshEnabled = false;
+
+        // ===== AUTOMATION CONTROL FUNCTIONS =====
+        
+        // Toggle automation function for floating button
+        async function toggleAutomation() {
+            const btn = document.getElementById('automationControlBtn');
+            const icon = document.getElementById('automationIcon');
+            
+            if (!btn || !icon) {
+                console.error('[TOGGLE] Button elements not found');
+                return;
+            }
+            
+            try {
+                btn.disabled = true;
+                const response = await fetch(`${API_BASE_URL}/api/automation-status`);
+                const currentData = await response.json();
+                
+                // Toggle automation
+                const toggleResponse = await fetch(`${API_BASE_URL}/api/automation-status`, { method: 'POST' });
+                const newData = await toggleResponse.json();
+                
+                // Update button appearance immediately
+                updateAutomationButton(newData.isAutomationEnabled);
+                
+                // Show notification
+                const message = newData.isAutomationEnabled ? 'Automation démarrée ✅' : 'Automation arrêtée ⏹️';
+                console.log('[TOGGLE]', message);
+                
+            } catch (error) {
+                console.error('Erreur toggle automation:', error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Update automation button appearance
+        function updateAutomationButton(isRunning) {
+            const btn = document.getElementById('automationControlBtn');
+            const icon = document.getElementById('automationIcon');
+            
+            if (!btn || !icon) return;
+            
+            if (isRunning) {
+                btn.classList.add('stop');
+                btn.title = 'Arrêter l\'automation';
+                icon.className = 'fas fa-stop';
+            } else {
+                btn.classList.remove('stop');
+                btn.title = 'Lancer l\'automation';
+                icon.className = 'fas fa-play';
+            }
+        }
+
+        // Configuration d'authentification et initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tokenFromUrl = urlParams.get('token');
+            let clientToken = localStorage.getItem('clientToken');
+            
+            if (tokenFromUrl) {
+                localStorage.setItem('clientToken', tokenFromUrl);
+                clientToken = tokenFromUrl;
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+            
+            if (!clientToken) {
+                window.location.href = '/access.html';
+                return;
+            }
+            
+            // Configuration globale pour toutes les requêtes fetch
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options = {}) {
+                if (!options.headers) {
+                    options.headers = {};
+                }
+                
+                if (url.includes('/api/') && !options.headers.Authorization) {
+                    const token = localStorage.getItem('clientToken');
+                    if (token) {
+                        options.headers.Authorization = `Bearer ${token}`;
+                    }
+                }
+                
+                return originalFetch.call(this, url, options);
+            };
+            
+            setTimeout(loadAutomationStatus, 500);
+            setTimeout(updateSystemHealth, 1000);
+            setTimeout(updateAutomationMetrics, 1500);
+            setTimeout(updateApiMetrics, 2000);
+            setTimeout(updateErrorMetrics, 2500);
+        });
+        
+        // Load automation status on page load
+        async function loadAutomationStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/automation-status`);
+                const data = await response.json();
+                
+                const isEnabled = data.isAutomationEnabled || data.isEnabled || false;
+                updateAutomationButton(isEnabled);
+                
+            } catch (error) {
+                console.error('[LOAD] Status loading error:', error);
+                updateAutomationButton(false);
+            }
+        }
+
+        // Initialize automation status when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(loadAutomationStatus, 500); // Small delay to ensure button is rendered
+        });
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshAllMetrics();
+        });
+
+        // Actualiser toutes les métriques
+        async function refreshAllMetrics() {
+            try {
+                await Promise.all([
+                    updateSystemHealth(),
+                    updateAutomationMetrics(),
+                    updateApiMetrics(),
+                    updateErrorMetrics(),
+                    updateLogs()
+                ]);
+                console.log('[PERFORMANCE] Toutes les métriques mises à jour');
+            } catch (error) {
+                console.error('[PERFORMANCE] Erreur actualisation:', error);
+            }
+        }
+
+        // État de santé du système
+        async function updateSystemHealth() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/performance/health`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const health = data.data;
+                    
+                    // Indicateur de santé
+                    const healthEl = document.getElementById('healthStatus');
+                    const indicator = healthEl.querySelector('.health-indicator');
+                    indicator.className = `health-indicator health-${health.status}`;
+                    healthEl.innerHTML = `<span class="health-indicator health-${health.status}"></span>${health.status.toUpperCase()}`;
+                    
+                    // Uptime
+                    document.getElementById('systemUptime').textContent = health.uptime || 'N/A';
+                    
+                    // Mémoire
+                    document.getElementById('memoryUsage').textContent = `${health.memoryUsage}%`;
+                    
+                    // Taux d'erreur
+                    document.getElementById('errorRate').textContent = `${health.errorRate}%`;
+                }
+            } catch (error) {
+                console.error('[PERFORMANCE] Erreur health:', error);
+            }
+        }
+
+        // Métriques d'automation
+        async function updateAutomationMetrics() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/performance/automation`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const metrics = data.data;
+                    
+                    document.getElementById('totalScans').textContent = metrics.totalScans;
+                    document.getElementById('scanSuccessRate').textContent = `${metrics.successRate}%`;
+                    document.getElementById('tweetsProcessed').textContent = metrics.tweetsProcessed;
+                    document.getElementById('actionsGenerated').textContent = metrics.actionsGenerated;
+                    document.getElementById('avgScanDuration').textContent = `${metrics.avgScanDuration}s`;
+                    document.getElementById('automationEfficiency').textContent = `${metrics.efficiency}%`;
+                }
+            } catch (error) {
+                console.error('[PERFORMANCE] Erreur automation:', error);
+            }
+        }
+
+        // Métriques API
+        async function updateApiMetrics() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/performance/api`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const metrics = data.data;
+                    
+                    document.getElementById('totalRequests').textContent = metrics.totalRequests;
+                    document.getElementById('apiSuccessRate').textContent = `${metrics.successRate}%`;
+                    document.getElementById('avgResponseTime').textContent = `${metrics.avgResponseTime}ms`;
+                    document.getElementById('rateLimitHits').textContent = metrics.rateLimitHits;
+                }
+            } catch (error) {
+                console.error('[PERFORMANCE] Erreur API:', error);
+            }
+        }
+
+        // Métriques d'erreurs
+        async function updateErrorMetrics() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/performance/errors`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const metrics = data.data;
+                    
+                    document.getElementById('totalErrors').textContent = metrics.total;
+                    document.getElementById('criticalErrors').textContent = metrics.critical;
+                    
+                    // Afficher les erreurs récentes
+                    const errorsContainer = document.getElementById('recentErrors');
+                    errorsContainer.innerHTML = '';
+                    
+                    if (metrics.recent && metrics.recent.length > 0) {
+                        metrics.recent.forEach(error => {
+                            const errorDiv = document.createElement('div');
+                            errorDiv.className = 'error-item';
+                            errorDiv.innerHTML = `
+                                <div class="error-timestamp">${new Date(error.timestamp).toLocaleString('fr-FR')}</div>
+                                <div><strong>${error.type}:</strong> ${error.message}</div>
+                            `;
+                            errorsContainer.appendChild(errorDiv);
+                        });
+                    } else {
+                        errorsContainer.innerHTML = '<p style="color: #00ff88;">✅ Aucune erreur récente</p>';
+                    }
+                }
+            } catch (error) {
+                console.error('[PERFORMANCE] Erreur errors:', error);
+            }
+        }
+
+        // Mise à jour des logs
+        async function updateLogs() {
+            try {
+                const level = document.getElementById('logLevel').value;
+                const search = document.getElementById('logSearch').value;
+                
+                let url = `${API_BASE_URL}/api/logs?limit=50`;
+                if (level) url += `&level=${level}`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const logViewer = document.getElementById('logViewer');
+                    logViewer.innerHTML = '';
+                    
+                    data.logs.forEach(log => {
+                        const logDiv = document.createElement('div');
+                        logDiv.className = `log-entry log-${log.level.toLowerCase()}`;
+                        logDiv.innerHTML = `
+                            <span style="color: rgba(255,255,255,0.6);">[${new Date(log.timestamp).toLocaleTimeString('fr-FR')}]</span>
+                            <span style="color: #00d4ff;">[${log.level}]</span>
+                            ${log.message}
+                        `;
+                        logViewer.appendChild(logDiv);
+                    });
+                    
+                    // Scroll vers le bas
+                    logViewer.scrollTop = logViewer.scrollHeight;
+                }
+            } catch (error) {
+                console.error('[PERFORMANCE] Erreur logs:', error);
+            }
+        }
+
+        // Filtrer les logs
+        function filterLogs() {
+            updateLogs();
+        }
+
+        // Vider le viewer de logs
+        function clearLogViewer() {
+            document.getElementById('logViewer').innerHTML = '';
+        }
+
+        // Toggle auto-refresh
+        function toggleAutoRefresh() {
+            const toggle = document.getElementById('autoRefreshToggle');
+            const status = document.getElementById('refreshStatus');
+            
+            isAutoRefreshEnabled = !isAutoRefreshEnabled;
+            
+            if (isAutoRefreshEnabled) {
+                toggle.classList.add('active');
+                status.textContent = 'Activé (30s)';
+                autoRefreshInterval = setInterval(refreshAllMetrics, 30000);
+            } else {
+                toggle.classList.remove('active');
+                status.textContent = 'Désactivé';
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            }
+        }
+
+        // Exporter les logs
+        async function exportLogs() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/logs/export?format=txt`);
+                const blob = await response.blob();
+                
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `autoraider-logs-${new Date().toISOString().split('T')[0]}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                alert('✅ Logs exportés avec succès!');
+            } catch (error) {
+                console.error('[PERFORMANCE] Erreur export:', error);
+                alert('❌ Erreur lors de l\'export des logs');
+            }
+        }
+
+        // Nettoyer les logs
+        async function cleanupLogs() {
+            const days = prompt('Nombre de jours à conserver:', '30');
+            if (!days || isNaN(days)) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/logs/cleanup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ daysToKeep: parseInt(days) })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('✅ Logs nettoyés avec succès!');
+                    updateLogs();
+                } else {
+                    alert('❌ Erreur lors du nettoyage');
+                }
+            } catch (error) {
+                console.error('[PERFORMANCE] Erreur cleanup:', error);
+                alert('❌ Erreur lors du nettoyage des logs');
+            }
+        }
+
+        // Nettoyage à la fermeture
+        window.addEventListener('beforeunload', function() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

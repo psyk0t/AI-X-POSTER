@@ -1,174 +1,276 @@
-# 🚀 Guide de déploiement X-AutoRaider
+# 🚀 GUIDE DE DÉPLOIEMENT VPS SÉCURISÉ
 
-## ✅ État actuel - Prêt pour déploiement
+## 📋 PRÉREQUIS VPS
 
-Votre projet est **prêt à être déployé** ! Tous les fichiers nécessaires ont été créés.
+### Système requis
+- **Ubuntu 20.04+** ou **Debian 11+**
+- **Node.js 18+** et **npm**
+- **2GB RAM minimum** (4GB recommandé)
+- **10GB espace disque**
+- **Accès SSH root ou sudo**
 
-## 📋 Checklist avant déploiement
+### Ports nécessaires
+- **3001** : Application principale
+- **22** : SSH (sécurisé)
+- **80/443** : HTTP/HTTPS (optionnel avec reverse proxy)
 
-### Sur votre machine locale :
-- [ ] Git installé
-- [ ] Compte GitHub créé
-- [ ] Clés SSH configurées pour GitHub
-- [ ] Accès SSH à votre VPS Ubuntu
+## 🔧 INSTALLATION AUTOMATIQUE
 
-### Sur le VPS Ubuntu :
-- [ ] Ubuntu 20.04+ 
-- [ ] Accès root ou sudo
-- [ ] Domaine pointant vers le VPS (optionnel)
-
-## 🔧 Étapes de déploiement
-
-### 1. Pousser sur GitHub
-
+### 1. Script de déploiement rapide
 ```bash
-# Dans le dossier de votre projet
-git init
-git add .
-git commit -m "Initial commit - X-AutoRaider ready for deployment"
-
-# Créer un repo sur GitHub puis :
-git remote add origin https://github.com/VOTRE-USERNAME/x-autoraider.git
-git branch -M main
-git push -u origin main
+# Sur votre VPS, exécuter en tant que root ou avec sudo
+curl -fsSL https://raw.githubusercontent.com/your-repo/deploy.sh | bash
 ```
 
-### 2. Déploiement automatique sur VPS
+### 2. Installation manuelle
 
+#### A. Préparer le système
 ```bash
-# Sur votre VPS Ubuntu
-wget https://raw.githubusercontent.com/VOTRE-USERNAME/x-autoraider/main/deploy.sh
-chmod +x deploy.sh
+# Mise à jour système
+sudo apt update && sudo apt upgrade -y
 
-# Modifier les variables dans le script si nécessaire
-nano deploy.sh
+# Installer Node.js 18
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
 
-# Lancer le déploiement
-./deploy.sh
+# Installer PM2 pour la gestion des processus
+sudo npm install -g pm2
+
+# Créer utilisateur dédié (sécurité)
+sudo useradd -m -s /bin/bash twitter-automation
+sudo usermod -aG sudo twitter-automation
 ```
 
-### 3. Configuration post-déploiement
-
+#### B. Déployer l'application
 ```bash
-# Configurer les variables d'environnement
-sudo nano /var/www/x-autoraider/.env
+# Se connecter en tant qu'utilisateur dédié
+sudo su - twitter-automation
 
-# Redémarrer l'application
-pm2 restart x-autoraider
+# Cloner le projet
+git clone https://github.com/your-repo/twitter-automation.git
+cd twitter-automation
+
+# Installer les dépendances
+npm install --production
+
+# Copier et configurer l'environnement
+cp .env.example .env
+nano .env  # Configurer vos vraies credentials
 ```
 
-## 🔑 Variables d'environnement critiques
+#### C. Configuration sécurisée
+```bash
+# Permissions sécurisées
+chmod 600 .env
+chmod 600 oauth2-users.json 2>/dev/null || true
 
-Configurez ces variables dans `/var/www/x-autoraider/.env` :
+# Configuration firewall
+sudo ufw allow 22/tcp
+sudo ufw allow 3001/tcp
+sudo ufw --force enable
 
-```env
-# OBLIGATOIRE - API X (Twitter)
-X_API_KEY=votre_api_key_ici
-X_API_SECRET=votre_secret_ici
-X_ACCESS_TOKEN=votre_token_ici
-X_ACCESS_TOKEN_SECRET=votre_token_secret_ici
-X_BEARER_TOKEN=votre_bearer_token_ici
+# Configuration PM2
+pm2 start server.js --name "twitter-automation"
+pm2 save
+pm2 startup
+```
 
-# OBLIGATOIRE - IA
-PERPLEXITY_API_KEY=votre_perplexity_key_ici
+## 🔐 CONFIGURATION SÉCURISÉE
 
-# Configuration serveur
+### Variables d'environnement (.env)
+```bash
+# API Twitter (OBLIGATOIRE)
+X_API_KEY=your_real_twitter_api_key
+X_API_SECRET=your_real_twitter_api_secret
+X_ACCESS_TOKEN=your_real_access_token
+X_ACCESS_TOKEN_SECRET=your_real_access_token_secret
+X_BEARER_TOKEN=your_real_bearer_token
+
+# OAuth2 Twitter (OBLIGATOIRE)
+X_CLIENT_ID=your_oauth2_client_id
+X_CLIENT_SECRET=your_oauth2_client_secret
+OAUTH2_CALLBACK_URL=https://your-domain.com/oauth2/callback
+
+# Perplexity AI (OBLIGATOIRE)
+PERPLEXITY_API_KEY=your_perplexity_api_key
+
+# Chiffrement (GÉNÉRÉ AUTOMATIQUEMENT)
+ENCRYPTION_KEY=auto_generated_256_bit_key
+
+# Serveur
 PORT=3001
 NODE_ENV=production
 
-# Redis (recommandé)
+# Redis (OPTIONNEL)
 REDIS_HOST=localhost
 REDIS_PORT=6379
+
+# Alertes (OPTIONNEL)
+ALERT_EMAIL_ENABLED=true
+ALERT_EMAIL_HOST=smtp.gmail.com
+ALERT_EMAIL_USER=your-alerts@gmail.com
+ALERT_EMAIL_PASS=your-app-password
 ```
 
-## 🌐 Configuration domaine (optionnel)
-
-Si vous avez un domaine, modifiez dans le script `deploy.sh` :
+### Sécurisation SSH
 ```bash
-# Remplacer
-server_name votre-domaine.com www.votre-domaine.com;
+# Désactiver login root
+sudo sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+
+# Changer port SSH (optionnel)
+sudo sed -i 's/#Port 22/Port 2222/' /etc/ssh/sshd_config
+
+# Redémarrer SSH
+sudo systemctl restart ssh
 ```
 
-## 📊 Vérification du déploiement
+## 🌐 REVERSE PROXY (NGINX)
 
+### Installation Nginx + SSL
 ```bash
-# Status de l'application
+# Installer Nginx
+sudo apt install nginx certbot python3-certbot-nginx -y
+
+# Configuration Nginx
+sudo tee /etc/nginx/sites-available/twitter-automation << 'EOF'
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+EOF
+
+# Activer le site
+sudo ln -s /etc/nginx/sites-available/twitter-automation /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+
+# SSL automatique
+sudo certbot --nginx -d your-domain.com
+```
+
+## 📊 MONITORING ET MAINTENANCE
+
+### Commandes PM2 essentielles
+```bash
+# Statut des processus
 pm2 status
 
 # Logs en temps réel
-pm2 logs x-autoraider
+pm2 logs twitter-automation
 
-# Tester l'application
-curl http://localhost:3001
-# ou
-curl http://votre-domaine.com
-```
+# Redémarrer l'application
+pm2 restart twitter-automation
 
-## 🔧 Commandes utiles post-déploiement
-
-```bash
-# Redémarrer l'app
-pm2 restart x-autoraider
-
-# Voir les logs
-pm2 logs x-autoraider --lines 100
-
-# Monitoring
+# Monitoring avancé
 pm2 monit
-
-# Mise à jour depuis GitHub
-cd /var/www/x-autoraider
-git pull origin main
-npm install --production
-pm2 restart x-autoraider
 ```
 
-## 🚨 Dépannage
-
-### L'app ne démarre pas
+### Logs système
 ```bash
-# Vérifier les logs d'erreur
-pm2 logs x-autoraider --err
+# Logs application
+tail -f logs/auto-actions-$(date +%Y-%m-%d).log
 
-# Vérifier la configuration
-pm2 describe x-autoraider
-
-# Vérifier les variables d'environnement
-cat /var/www/x-autoraider/.env
+# Logs système
+sudo journalctl -u nginx -f
+sudo tail -f /var/log/auth.log
 ```
 
-### Problèmes Nginx
+### Sauvegarde automatique
 ```bash
-# Tester la config
-sudo nginx -t
+# Script de sauvegarde
+sudo tee /home/twitter-automation/backup.sh << 'EOF'
+#!/bin/bash
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/home/twitter-automation/backups"
+mkdir -p $BACKUP_DIR
 
-# Redémarrer Nginx
-sudo systemctl restart nginx
+# Sauvegarder données critiques
+tar -czf $BACKUP_DIR/twitter-automation-$DATE.tar.gz \
+  /home/twitter-automation/twitter-automation/.env \
+  /home/twitter-automation/twitter-automation/oauth2-users.encrypted.json \
+  /home/twitter-automation/twitter-automation/encryption.key \
+  /home/twitter-automation/twitter-automation/logs/
 
-# Logs Nginx
-sudo tail -f /var/log/nginx/error.log
+# Garder seulement les 7 dernières sauvegardes
+find $BACKUP_DIR -name "twitter-automation-*.tar.gz" -mtime +7 -delete
+EOF
+
+chmod +x /home/twitter-automation/backup.sh
+
+# Cron quotidien
+echo "0 2 * * * /home/twitter-automation/backup.sh" | crontab -
 ```
 
-### Problèmes SSL
+## 🚨 SÉCURITÉ PRODUCTION
+
+### Checklist sécurité
+- [ ] **Firewall configuré** (ports 22, 3001 uniquement)
+- [ ] **SSH sécurisé** (pas de root, clés SSH)
+- [ ] **Utilisateur dédié** (pas de root pour l'app)
+- [ ] **Variables d'environnement** chiffrées
+- [ ] **HTTPS activé** (certificat SSL)
+- [ ] **Sauvegardes automatiques**
+- [ ] **Monitoring actif**
+
+### Alertes de sécurité
 ```bash
-# Renouveler le certificat
-sudo certbot renew
+# Installer fail2ban
+sudo apt install fail2ban -y
 
-# Tester le certificat
-sudo certbot certificates
+# Configuration fail2ban
+sudo tee /etc/fail2ban/jail.local << 'EOF'
+[DEFAULT]
+bantime = 3600
+findtime = 600
+maxretry = 3
+
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+EOF
+
+sudo systemctl restart fail2ban
 ```
 
-## 📞 Support
+## 🎯 DÉMARRAGE RAPIDE
 
-Si vous rencontrez des problèmes :
-- Telegram: [@psyk0t](https://t.me/psyk0t)
-- X: [@psyk0t](https://x.com/psyk0t)
+### Commande unique de déploiement
+```bash
+# Exécuter sur votre VPS
+wget -O deploy.sh https://raw.githubusercontent.com/your-repo/deploy.sh
+chmod +x deploy.sh
+sudo ./deploy.sh
+```
 
-## 🎉 Félicitations !
+### Vérification post-déploiement
+```bash
+# Vérifier que tout fonctionne
+curl http://localhost:3001/health
+pm2 status
+sudo systemctl status nginx
+```
 
-Une fois déployé, votre X-AutoRaider sera accessible 24/7 sur votre VPS avec :
-- ✅ HTTPS automatique
-- ✅ Redémarrage automatique
-- ✅ Logs centralisés
-- ✅ Monitoring intégré
-- ✅ Sécurité renforcée
+## 📞 SUPPORT
+
+En cas de problème :
+1. **Vérifier les logs** : `pm2 logs twitter-automation`
+2. **Vérifier le statut** : `pm2 status`
+3. **Redémarrer** : `pm2 restart twitter-automation`
+4. **Vérifier la config** : `nginx -t`
+
+Le système est maintenant prêt pour la production sécurisée ! 🚀

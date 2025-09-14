@@ -6,33 +6,17 @@
     <title>Raid Analytics Dashboard - X AutoRaider</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="components/navbar.js"></script>
+    <script src="components/floating-automation-button.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
             min-height: 100vh;
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            padding-top: 70px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            margin: 0;
             color: #333;
-            padding: 80px 20px 20px 20px;
-        }
-        
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            .container {
-                margin: 60px auto 20px;
-                padding: 15px;
-            }
-            
-            .dashboard-container {
-                padding: 15px;
-            }
         }
         
         .container {
@@ -76,10 +60,10 @@
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
             padding: 25px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: none;
+            transition: all 0.3s ease;
         }
 
         .card:hover {
@@ -118,7 +102,7 @@
 
         .quota-overview .card-icon { background: linear-gradient(45deg, #4CAF50, #45a049); }
         .accounts-status .card-icon { background: linear-gradient(45deg, #2196F3, #1976D2); }
-        .tweet-analysis .card-icon { background: linear-gradient(45deg, #6a11cb, #2575fc); }
+        .scan-metrics .card-icon { background: linear-gradient(45deg, #6a11cb, #2575fc); }
         .actions-today .card-icon { background: linear-gradient(45deg, #FF9800, #F57C00); }
         .actions-total .card-icon { background: linear-gradient(45deg, #9C27B0, #7B1FA2); }
         .recent-activity .card-icon { background: linear-gradient(45deg, #F44336, #D32F2F); }
@@ -223,6 +207,26 @@
             background: #ffebee !important;
         }
 
+        /* Badges statut compte (mute / working) */
+        .mute-badge {
+            color: #ff9800;
+            font-weight: 600;
+            font-size: 0.85em;
+            margin-left: 6px;
+        }
+
+        .working-badge {
+            color: #4CAF50;
+            font-weight: 600;
+            font-size: 0.85em;
+            margin-left: 6px;
+        }
+
+        .account-item.muted {
+            border-left: 4px solid #ff9800 !important;
+            background: #fff8e1 !important;
+        }
+
         .activity-item {
             display: flex;
             align-items: center;
@@ -291,6 +295,105 @@
             color: #999;
             margin-left: 10px;
         }
+
+        /* Accordéon: Actions planifiées par compte */
+        .accordion-section-title {
+            font-weight: 600;
+            color: #333;
+            margin-top: 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .accordion-item {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            overflow: hidden;
+            background: #fafafa;
+        }
+
+        .accordion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            cursor: pointer;
+            background: #f8f9fa;
+        }
+
+        .accordion-header:hover {
+            background: #f0f3f7;
+        }
+
+        .accordion-title {
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .accordion-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .accordion-body {
+            display: none;
+            padding: 10px 12px 12px 12px;
+            background: white;
+        }
+
+        .accordion-body.open {
+            display: block;
+        }
+
+        .chips {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .chip {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            background: #eef2f7;
+            color: #444;
+        }
+
+        .chip.like { background: #fde7ef; color: #e91e63; }
+        .chip.reply { background: #e6f2fe; color: #2196f3; }
+        .chip.retweet { background: #e7f5ec; color: #2e7d32; }
+
+        .planned-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.9em;
+        }
+
+        .planned-item:last-child { border-bottom: none; }
+
+        .planned-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #555;
+        }
+
+        .planned-right { color: #777; font-size: 0.85em; }
+
+        .next-time { color: #666; font-size: 0.85em; }
 
         .loading {
             text-align: center;
@@ -417,6 +520,117 @@
                 font-size: 1em;
             }
         }
+
+        /* Positioning for automation button next to refresh button */
+        .dashboard-position {
+            bottom: 30px !important;
+            right: 110px !important; /* Position to the left of the refresh button */
+        }
+        
+        /* Responsive positioning for different screen sizes */
+        @media (max-width: 1024px) {
+            .dashboard-position {
+                right: 100px !important; /* Slightly closer on tablets */
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-position {
+                right: 20px !important; /* Same position as refresh button */
+                bottom: 85px !important; /* Above refresh button */
+            }
+            
+            .refresh-btn {
+                bottom: 20px !important;
+                right: 20px !important;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .dashboard-position {
+                right: 20px !important; /* Same position as refresh button */
+                bottom: 80px !important; /* Above refresh button */
+                width: 45px !important;
+                height: 45px !important;
+                font-size: 1rem !important;
+            }
+            
+            .refresh-btn {
+                bottom: 20px !important;
+                right: 20px !important;
+                width: 50px !important;
+                height: 50px !important;
+                font-size: 1.1rem !important;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            .dashboard-position {
+                right: 20px !important; /* Same position as refresh button */
+                bottom: 75px !important; /* Above refresh button */
+                width: 42px !important;
+                height: 42px !important;
+                font-size: 0.9rem !important;
+            }
+            
+            .refresh-btn {
+                bottom: 20px !important;
+                right: 20px !important;
+                width: 45px !important;
+                height: 45px !important;
+                font-size: 1rem !important;
+            }
+        }
+
+        /* Floating buttons - unified styling */
+        .floating-btn {
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .floating-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .refresh-btn {
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(45deg, #1da1f2, #0d8bd9);
+        }
+
+        .automation-control-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .automation-control-btn.stop {
+            background: linear-gradient(45deg, #dc3545, #e74c3c);
+            animation: pulse-running 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-running {
+            0%, 100% {
+                box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 6px 25px rgba(220, 53, 69, 0.7);
+                transform: scale(1.05);
+            }
+        }
     </style>
 </head>
 <body>
@@ -435,11 +649,12 @@
                 </div>
             </div>
         </div>
-        </div>
+    </div>
 
         <div id="error-container"></div>
         <div id="loading" class="loading">
-            <i class="fas fa-spinner fa-spin"></i> Loading data...
+            <i class="fas fa-spinner fa-spin"></i>
+            Loading dashboard...
         </div>
 
         <div id="dashboard-content" style="display: none;">
@@ -512,28 +727,64 @@
                     <div id="accounts-list"></div>
                 </div>
 
-                <!-- Tweet Analysis -->
-                <div class="card tweet-analysis">
+                <!-- Scan Metrics -->
+                <div class="card scan-metrics">
                     <div class="card-header">
                         <div class="card-icon">
                             <i class="fas fa-search"></i>
                         </div>
                         <div>
-                            <div class="card-title">Tweet Analysis</div>
+                            <div class="card-title">🔍 Scan Metrics</div>
                             <div class="card-description">
-                                Statistics of the last scan : raw tweets detected and tweets exploitable after filtering.
+                                Real-time scan performance and tweet discovery
                             </div>
                         </div>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">Raw Tweets Detected</span>
-                        <span class="metric-value info" id="tweets-found">-</span>
+                        <span class="metric-label">Tweets Found</span>
+                        <span class="metric-value info" id="scan-tweets-found">-</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">Valid Tweets (After Filter)</span>
-                        <span class="metric-value success" id="tweets-valid">-</span>
+                        <span class="metric-label">New Valid Tweets</span>
+                        <span class="metric-value success" id="scan-tweets-valid">-</span>
                     </div>
-                    <div id="tweet-scan-history"></div>
+                    <div class="metric-row">
+                        <span class="metric-label">Efficiency Rate</span>
+                        <span class="metric-value warning" id="scan-efficiency">-%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Batches Processed</span>
+                        <span class="metric-value info" id="scan-batches">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Last Scan</span>
+                        <span class="metric-value" id="scan-last-time">-</span>
+                    </div>
+                    
+                    <!-- Filter Breakdown -->
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
+                        <div class="accordion-section-title">
+                            <i class="fas fa-filter"></i> Filter Breakdown
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Replies Filtered</span>
+                            <span class="metric-value danger" id="scan-replies-filtered">-</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Retweets Filtered</span>
+                            <span class="metric-value danger" id="scan-retweets-filtered">-</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Already Processed</span>
+                            <span class="metric-value" id="scan-already-processed">-</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Grouped Planned Actions by Account -->
+                    <div class="accordion-section-title">
+                        <i class="fas fa-tasks"></i> Planned Actions by Account
+                    </div>
+                    <div id="planned-actions-grouped"></div>
                 </div>
 
                 <!-- Actions Today -->
@@ -564,6 +815,10 @@
                     <div class="metric-row">
                         <span class="metric-label">Retweets</span>
                         <span class="metric-value" style="color: #4caf50;" id="actions-today-retweets">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Vélocité</span>
+                        <span class="metric-value" style="color: #ff9800;" id="actions-today-velocity">- act/h</span>
                     </div>
                     <div id="actions-this-hour"></div>
                 </div>
@@ -644,6 +899,11 @@
         </div>
     </div>
 
+    <!-- Automation Control Button -->
+    <button class="floating-btn automation-control-btn dashboard-position" id="automationControlBtn" onclick="toggleAutomation()" title="Lancer/Arrêter l'automation">
+        <i class="fas fa-play" id="automationIcon"></i>
+    </button>
+
     <button class="refresh-btn" onclick="loadDashboard()" title="Refresh data">
         <i class="fas fa-sync-alt"></i>
     </button>
@@ -661,30 +921,109 @@
             errorEl.innerHTML = '';
 
             try {
-                // Charger les données principales
-                const [overviewRes, activityRes, recentRes, performersRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}/api/dashboard/overview`),
-                    fetch(`${API_BASE_URL}/api/dashboard/accounts-activity`),
-                    fetch(`${API_BASE_URL}/api/dashboard/recent-activity`),
-                    fetch(`${API_BASE_URL}/api/dashboard/top-performers`)
-                ]);
-
+                // 🚀 OPTIMISATION: Charger d'abord les données critiques
+                const token = localStorage.getItem('clientToken');
+                const overviewRes = await fetch(`${API_BASE_URL}/api/dashboard/overview`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
                 const overview = await overviewRes.json();
-                const activity = await activityRes.json();
-                const recent = await recentRes.json();
-                const performers = await performersRes.json();
-
+                
                 if (!overview.success) throw new Error(overview.error || 'Error loading overview');
 
+                // Afficher immédiatement les données principales
                 updateQuotas(overview.data.quotas);
                 updateAccounts(overview.data.accounts);
                 await updateActions(overview.data.actions);
-                updateRecentActivity(recent.success ? recent.data : []);
-                updateTopPerformers(performers.success ? performers.data : []);
-                updateTweetStats();
-
+                
                 loadingEl.style.display = 'none';
                 contentEl.style.display = 'block';
+
+                // 🚀 Charger les données secondaires de façon différée pour éviter la lenteur
+                setTimeout(async () => {
+                    try {
+                        const token = localStorage.getItem('clientToken');
+                        const [recentRes, performersRes] = await Promise.all([
+                            fetch(`${API_BASE_URL}/api/dashboard/recent-activity`, {
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Accept': 'application/json',
+                                    'Content-Type': 'application/json'
+                                }
+                            }),
+                            fetch(`${API_BASE_URL}/api/dashboard/top-performers`, {
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Accept': 'application/json',
+                                    'Content-Type': 'application/json'
+                                }
+                            })
+                        ]);
+
+                        if (!recentRes.ok) {
+                            throw new Error(`Recent activity API error: ${recentRes.status}`);
+                        }
+                        if (!performersRes.ok) {
+                            throw new Error(`Top performers API error: ${performersRes.status}`);
+                        }
+
+                        const recentText = await recentRes.text();
+                        const performersText = await performersRes.text();
+                        
+                        let recent, performers;
+                        try {
+                            recent = JSON.parse(recentText);
+                        } catch (e) {
+                            console.error('[DASHBOARD] Failed to parse recent activity JSON:', e);
+                            console.error('[DASHBOARD] Response:', recentText.substring(0, 200));
+                            recent = { success: false, data: [] };
+                        }
+                        
+                        try {
+                            performers = JSON.parse(performersText);
+                        } catch (e) {
+                            console.error('[DASHBOARD] Failed to parse top performers JSON:', e);
+                            console.error('[DASHBOARD] Response:', performersText.substring(0, 200));
+                            performers = { success: false, data: [] };
+                        }
+
+                        updateRecentActivity(recent.success ? recent.data : []);
+                        updateTopPerformers(performers.success ? performers.data : []);
+                    } catch (e) {
+                        console.error('Error loading secondary data:', e);
+                    }
+                }, 1000);
+
+                // Ne plus charger updateTweetStats qui écrase les scan metrics
+                // setTimeout(async () => {
+                //     try {
+                //         await updateTweetStats();
+                //     } catch (e) {
+                //         console.error('Error loading tweet stats:', e);
+                //     }
+                // }, 500);
+
+                // Charger les actions planifiées séparément
+                setTimeout(async () => {
+                    try {
+                        const token = localStorage.getItem('clientToken');
+                        const queueRes = await fetch(`${API_BASE_URL}/api/automation-queue`, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        const automationQueue = await queueRes.json();
+                        const queuePayload = (automationQueue && automationQueue.success) ? (automationQueue.data || automationQueue) : null;
+                        updatePlannedActionsGrouped(queuePayload);
+                    } catch (e) {
+                        console.error('Error loading planned actions:', e);
+                    }
+                }, 1500);
 
             } catch (error) {
                 console.error('Dashboard loading error:', error);
@@ -711,13 +1050,30 @@
         }
 
         async function updateAccounts(accounts) {
-            document.getElementById('total-accounts').textContent = accounts.length;
-            document.getElementById('active-accounts').textContent = accounts.filter(a => a.isActive).length;
+            const totalAccounts = accounts.length;
+            const activeAccounts = accounts.filter(a => a.isActive);
+            const activeCount = activeAccounts.length;
+            
+            document.getElementById('total-accounts').textContent = totalAccounts;
+            document.getElementById('active-accounts').textContent = activeCount;
+            
+            // Alerte si moins de 50% des comptes sont actifs
+            const activePercentage = totalAccounts > 0 ? (activeCount / totalAccounts) * 100 : 0;
+            if (activePercentage < 50 && totalAccounts > 0) {
+                console.warn(`⚠️ ALERTE: Seulement ${activeCount}/${totalAccounts} comptes actifs (${Math.round(activePercentage)}%)`);
+            }
             
             // Récupérer les warnings de quotas
             let quotaWarnings = {};
             try {
-                const warningsResponse = await fetch(`${API_BASE_URL}/api/quota-warnings`);
+                const token = localStorage.getItem('clientToken');
+                const warningsResponse = await fetch(`${API_BASE_URL}/api/quota-warnings`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
                 const warningsData = await warningsResponse.json();
                 if (warningsData.success) {
                     // Indexer les warnings par nom de compte
@@ -732,7 +1088,14 @@
             // Récupérer les données de configuration pour les quotas individuels
             let quotaConfig = {};
             try {
-                const configResponse = await fetch(`${API_BASE_URL}/master-quota-config.json`);
+                const token = localStorage.getItem('clientToken');
+                const configResponse = await fetch(`${API_BASE_URL}/master-quota-config.json`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
                 const configData = await configResponse.json();
                 quotaConfig = configData;
             } catch (error) {
@@ -744,6 +1107,8 @@
                 // Vérifier si le token OAuth2 est expiré ou nécessite une reconnexion
                 let tokenStatus = '';
                 let tokenClass = '';
+                let rowExtraClass = '';
+                let statusBadge = '';
                 
                 if (account.authMethod === 'oauth2' && account.expiresAt) {
                     const expirationTime = new Date(account.expiresAt);
@@ -762,6 +1127,27 @@
                 // Récupérer les données détaillées du compte depuis la config
                 const accountConfig = quotaConfig.connectedAccounts ? quotaConfig.connectedAccounts[account.id] : null;
                 const perAccountQuota = quotaConfig.allocation ? quotaConfig.allocation.perAccountQuota : 'N/A';
+
+                // Affichage statut mute/working
+                const nowTs = Date.now();
+                const formatRemaining = (ms) => {
+                    if (ms <= 0) return '0m';
+                    const totalSec = Math.ceil(ms / 1000);
+                    const h = Math.floor(totalSec / 3600);
+                    const m = Math.floor((totalSec % 3600) / 60);
+                    if (h > 0) return `${h}h ${m}m`;
+                    return `${m}m`;
+                };
+                const st = account.status || {};
+                if (st.state === 'paused' && st.until && st.until > nowTs) {
+                    const remaining = formatRemaining(st.until - nowTs);
+                    const reason = st.reason ? String(st.reason) : 'Muted';
+                    statusBadge = `<span class="mute-badge" title="${reason}"><i class="fas fa-pause-circle"></i> Muted · ${remaining} left</span>`;
+                    rowExtraClass = 'muted';
+                } else if (st.state === 'working') {
+                    const reason = st.reason ? String(st.reason) : 'Working';
+                    statusBadge = `<span class="working-badge" title="${reason}"><i class="fas fa-cog"></i> Working</span>`;
+                }
                 
                 // Dates de connexion/reconnexion
                 let connectionInfo = '';
@@ -783,12 +1169,33 @@
                     connectionInfo += '</div>';
                 }
                 
-                // Quota individuel
+                // Quota journalier (plus pertinent que le quota global)
                 let quotaInfo = '';
                 if (accountConfig) {
-                    const usedActions = accountConfig.actionsUsed || 0;
+                    const dailyUsed = accountConfig.dailyUsed || { like: 0, retweet: 0, reply: 0 };
+                    const totalDailyUsed = (dailyUsed.like || 0) + (dailyUsed.retweet || 0) + (dailyUsed.reply || 0);
+                    const dailyLimit = quotaConfig.allocation ? quotaConfig.allocation.perAccountDaily : 25;
+                    const quotaPercent = dailyLimit > 0 ? Math.round((totalDailyUsed / dailyLimit) * 100) : 0;
+                    
+                    let quotaColor = '#4caf50'; // Vert par défaut
+                    let quotaIcon = 'fas fa-check-circle';
+                    
+                    if (quotaPercent >= 100) {
+                        quotaColor = '#f44336'; // Rouge - quota épuisé
+                        quotaIcon = 'fas fa-exclamation-circle';
+                    } else if (quotaPercent >= 80) {
+                        quotaColor = '#ff9800'; // Orange - quota critique
+                        quotaIcon = 'fas fa-exclamation-triangle';
+                    } else if (quotaPercent >= 60) {
+                        quotaColor = '#ffeb3b'; // Jaune - quota élevé
+                        quotaIcon = 'fas fa-clock';
+                    }
+                    
                     quotaInfo = `<div style="font-size: 0.8em; color: #666; margin-top: 4px;">
-                        <i class="fas fa-chart-pie" style="margin-right: 4px;"></i>Quota: ${usedActions}/${perAccountQuota} actions used
+                        <i class="${quotaIcon}" style="margin-right: 4px; color: ${quotaColor};"></i>Daily Quota: <span style="color: ${quotaColor}; font-weight: bold;">${totalDailyUsed}/${dailyLimit}</span> (${quotaPercent}%)
+                        <div style="margin-top: 2px; font-size: 0.75em; color: #888;">
+                            💬 ${dailyUsed.reply || 0} replies • ❤️ ${dailyUsed.like || 0} likes • 🔄 ${dailyUsed.retweet || 0} retweets
+                        </div>
                     </div>`;
                 }
                 
@@ -814,9 +1221,9 @@
                 }
                 
                 return `
-                    <div class="account-item ${tokenClass}">
+                    <div class="account-item ${tokenClass} ${rowExtraClass}">
                         <div class="account-info">
-                            <div class="account-name">@${account.username}</div>
+                            <div class="account-name">@${account.username} ${statusBadge}</div>
                             <div class="account-stats">${account.name || 'N/A'} • ${account.authMethod}${tokenStatus}</div>
                             ${connectionInfo}
                             ${quotaInfo}
@@ -837,9 +1244,35 @@
             document.getElementById('actions-today-replies').textContent = actions.today.byType.reply.toLocaleString();
             document.getElementById('actions-today-retweets').textContent = actions.today.byType.retweet.toLocaleString();
             
+            // Vélocité depuis les analytics
+            try {
+                const token = localStorage.getItem('clientToken');
+                const velocityResponse = await fetch('/api/analytics/performance', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const velocityData = await velocityResponse.json();
+                if (velocityData.success && velocityData.data.velocity) {
+                    document.getElementById('actions-today-velocity').textContent = `${velocityData.data.velocity.toFixed(1)} act/h`;
+                }
+            } catch (error) {
+                console.log('Erreur récupération vélocité:', error);
+                document.getElementById('actions-today-velocity').textContent = '- act/h';
+            }
+            
             // Récupérer les données horaires depuis actions-stats.json
             try {
-                const statsResponse = await fetch(`${API_BASE_URL}/actions-stats.json`);
+                const token = localStorage.getItem('clientToken');
+                const statsResponse = await fetch(`${API_BASE_URL}/actions-stats.json`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
                 const statsData = await statsResponse.json();
                 
                 if (statsData.thisHour) {
@@ -928,25 +1361,69 @@
 
         async function updateTweetStats() {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/dashboard/tweet-stats`);
+                const token = localStorage.getItem('clientToken');
+                const response = await fetch(`${API_BASE_URL}/api/dashboard/tweet-stats`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
                 const result = await response.json();
 
                 if (result.success) {
-                    document.getElementById('tweets-found').textContent = result.data.tweetsFound ?? 'N/A';
-                    document.getElementById('tweets-valid').textContent = result.data.tweetsValid ?? 'N/A';
+                    // Utiliser les nouveaux IDs de la section Scan Metrics
+                    const tweetsFoundEl = document.getElementById('scan-tweets-found');
+                    const tweetsValidEl = document.getElementById('scan-tweets-valid');
                     
-                    // Ajouter l'historique des scans si disponible
-                    const historyElement = document.getElementById('tweet-scan-history');
-                    if (historyElement && result.data.scanHistory) {
-                        const history = result.data.scanHistory.slice(-5); // Derniers 5 scans
+                    if (tweetsFoundEl) tweetsFoundEl.textContent = result.data.tweetsFound ?? 'N/A';
+                    if (tweetsValidEl) tweetsValidEl.textContent = result.data.tweetsValid ?? 'N/A';
+                    
+                    // Mettre à jour les métriques additionnelles si disponibles
+                    const efficiencyEl = document.getElementById('scan-efficiency');
+                    const batchesEl = document.getElementById('scan-batches');
+                    const lastScanEl = document.getElementById('scan-last-time');
+                    
+                    if (efficiencyEl && result.data.tweetsFound > 0) {
+                        const efficiency = Math.round((result.data.tweetsValid / result.data.tweetsFound) * 100);
+                        efficiencyEl.textContent = `${efficiency}%`;
+                    }
+                    
+                    if (batchesEl && result.data.batchesProcessed) {
+                        batchesEl.textContent = result.data.batchesProcessed;
+                    }
+                    
+                    if (lastScanEl && result.data.lastScanTime) {
+                        lastScanEl.textContent = new Date(result.data.lastScanTime).toLocaleTimeString('fr-FR');
+                    }
+                    
+                    // Mettre à jour les filtres si disponibles
+                    const repliesFilteredEl = document.getElementById('scan-replies-filtered');
+                    const retweetsFilteredEl = document.getElementById('scan-retweets-filtered');
+                    const alreadyProcessedEl = document.getElementById('scan-already-processed');
+                    
+                    if (repliesFilteredEl && result.data.repliesFiltered !== undefined) {
+                        repliesFilteredEl.textContent = result.data.repliesFiltered;
+                    }
+                    if (retweetsFilteredEl && result.data.retweetsFiltered !== undefined) {
+                        retweetsFilteredEl.textContent = result.data.retweetsFiltered;
+                    }
+                    if (alreadyProcessedEl && result.data.alreadyProcessed !== undefined) {
+                        alreadyProcessedEl.textContent = result.data.alreadyProcessed;
+                    }
+                    
+                    // L'historique n'est plus nécessaire car supprimé avec Tweet Analysis
+                    const historyElement = null; // Supprimé
+                    if (false && historyElement && result.data.scanHistory && result.data.scanHistory.length > 0) {
+                        const history = result.data.scanHistory.slice(0, 5); // Derniers 5 scans (déjà triés)
                         historyElement.innerHTML = `
                             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
                                 <div style="font-weight: 600; color: #333; margin-bottom: 10px;">
-                                    <i class="fas fa-history" style="margin-right: 8px;"></i>Scan History
+                                    <i class="fas fa-history" style="margin-right: 8px;"></i>Scan History (Real Data)
                                 </div>
                                 ${history.map(scan => `
                                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 0.85em; border-bottom: 1px solid #f0f0f0;">
-                                        <span style="color: #666;">${new Date(scan.timestamp).toLocaleString('en-US')}</span>
+                                        <span style="color: #666;">${new Date(scan.timestamp).toLocaleString('fr-FR')}</span>
                                         <div>
                                             <span style="color: #2196f3; margin-right: 10px;">${scan.found} found</span>
                                             <span style="color: #4caf50;">${scan.valid} valid</span>
@@ -956,41 +1433,30 @@
                             </div>
                         `;
                     } else if (historyElement) {
-                        // Simuler un historique basé sur les données actuelles
-                        const now = new Date();
-                        const mockHistory = [];
-                        for (let i = 4; i >= 0; i--) {
-                            const scanTime = new Date(now.getTime() - (i * 2 * 60 * 60 * 1000)); // Toutes les 2h
-                            const found = (result.data.tweetsFound || 0) + Math.floor(Math.random() * 20) - 10;
-                            const valid = (result.data.tweetsValid || 0) + Math.floor(Math.random() * 10) - 5;
-                            mockHistory.push({ timestamp: scanTime.toISOString(), found: Math.max(0, found), valid: Math.max(0, valid) });
-                        }
-                        
+                        // Afficher un message si pas d'historique disponible
                         historyElement.innerHTML = `
                             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
-                                <div style="font-weight: 600; color: #333; margin-bottom: 10px;">
-                                    <i class="fas fa-history" style="margin-right: 8px;"></i>Recent History (simulated)
+                                <div style="font-weight: 600; color: #666; margin-bottom: 10px; text-align: center;">
+                                    <i class="fas fa-info-circle" style="margin-right: 8px;"></i>Aucun historique de scan disponible
                                 </div>
-                                ${mockHistory.map(scan => `
-                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 0.85em; border-bottom: 1px solid #f0f0f0;">
-                                        <span style="color: #666;">${new Date(scan.timestamp).toLocaleString('en-US')}</span>
-                                        <div>
-                                            <span style="color: #2196f3; margin-right: 10px;">${scan.found} found</span>
-                                            <span style="color: #4caf50;">${scan.valid} valid</span>
-                                        </div>
-                                    </div>
-                                `).join('')}
+                                <div style="color: #999; font-size: 0.85em; text-align: center;">
+                                    L'historique apparaîtra après les premiers scans d'automation
+                                </div>
                             </div>
                         `;
                     }
                 } else {
-                    document.getElementById('tweets-found').textContent = 'Error';
-                    document.getElementById('tweets-valid').textContent = 'Error';
+                    const tweetsFoundEl = document.getElementById('scan-tweets-found');
+                    const tweetsValidEl = document.getElementById('scan-tweets-valid');
+                    if (tweetsFoundEl) tweetsFoundEl.textContent = 'Error';
+                    if (tweetsValidEl) tweetsValidEl.textContent = 'Error';
                 }
             } catch (error) {
                 console.error('Error loading tweet stats:', error);
-                document.getElementById('tweets-found').textContent = 'Error';
-                document.getElementById('tweets-valid').textContent = 'Error';
+                const tweetsFoundEl = document.getElementById('scan-tweets-found');
+                const tweetsValidEl = document.getElementById('scan-tweets-valid');
+                if (tweetsFoundEl) tweetsFoundEl.textContent = 'Error';
+                if (tweetsValidEl) tweetsValidEl.textContent = 'Error';
             }
         }
 
@@ -1012,11 +1478,350 @@
             return texts[actionType] || 'Action';
         }
 
+        // --- Grouped Planned Actions (Accordion) ---
+        function updatePlannedActionsGrouped(queueData) {
+            const container = document.getElementById('planned-actions-grouped');
+            if (!container) return;
+            try {
+                const actions = queueData && Array.isArray(queueData.plannedActions) ? queueData.plannedActions : [];
+                if (actions.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #666; padding: 10px;">No planned actions</div>';
+                    return;
+                }
+
+                // Regrouper par compte
+                const groupsMap = new Map();
+                for (const a of actions) {
+                    const rawUser = a.accountUsername || a.account || a.username || 'Unknown';
+                    const user = rawUser.startsWith('@') ? rawUser : `@${rawUser}`;
+                    if (!groupsMap.has(user)) groupsMap.set(user, []);
+                    groupsMap.get(user).push(a);
+                }
+
+                const groups = Array.from(groupsMap.entries()).map(([username, items]) => {
+                    const counts = { like: 0, reply: 0, retweet: 0 };
+                    let nextTs = null;
+                    for (const it of items) {
+                        if (it && it.type) counts[it.type] = (counts[it.type] || 0) + 1;
+                        const ts = new Date(it.scheduledTime || it.time || Date.now()).getTime();
+                        if (!Number.isNaN(ts)) {
+                            if (nextTs === null || ts < nextTs) nextTs = ts;
+                        }
+                    }
+                    return { username, items, counts, total: items.length, nextTs };
+                });
+
+                // Tri: prochaine exécution d'abord, puis total décroissant
+                groups.sort((a, b) => ((a.nextTs ?? Infinity) - (b.nextTs ?? Infinity)) || (b.total - a.total));
+
+                // Rendu
+                container.innerHTML = groups.map((g, idx) => {
+                    const chips = `
+                        <span class="chip like">❤️ ${g.counts.like || 0}</span>
+                        <span class="chip reply">💬 ${g.counts.reply || 0}</span>
+                        <span class="chip retweet">🔄 ${g.counts.retweet || 0}</span>
+                    `;
+                    const nextHtml = g.nextTs ? `<span class="next-time"><i class=\"fas fa-clock\" style=\"margin-right:6px;\"></i>${formatTimeUntil(g.nextTs)}</span>` : '';
+                    const body = g.items.slice(0, 20).map(it => {
+                        const icon = getActionIcon(it.type);
+                        const txt = getActionText(it.type);
+                        const t = new Date(it.scheduledTime || Date.now());
+                        const tweetId = it.targetTweetId || it.tweetId || '';
+                        const link = tweetId ? `<a href=\"https://twitter.com/i/status/${tweetId}\" target=\"_blank\" class=\"tweet-link-btn\" title=\"Open tweet\"><i class=\"fab fa-twitter\"></i></a>` : '';
+                        const pri = it.priority ? `<span style=\"margin-left:6px;color:#888;\">· ${it.priority}</span>` : '';
+                        return `
+                            <div class=\"planned-item\">
+                                <div class=\"planned-left\">
+                                    <span class=\"activity-icon activity-${it.type}\"><i class=\"fas fa-${icon}\"></i></span>
+                                    <span>${txt} ${tweetId ? `tweet ${String(tweetId).substring(0, 8)}...` : ''}${pri}</span>
+                                </div>
+                                <div class=\"planned-right\">${formatTime(t)} ${link}</div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    return `
+                        <div class=\"accordion-item\" data-idx=\"${idx}\">
+                            <div class=\"accordion-header\" onclick=\"toggleAccordionBody(${idx})\">
+                                <div class=\"accordion-title\">${g.username}</div>
+                                <div class=\"accordion-meta\">
+                                    <div class=\"chips\">${chips}</div>
+                                    <div style=\"font-weight:600;color:#333;\">${g.total}</div>
+                                    ${nextHtml}
+                                </div>
+                            </div>
+                            <div class=\"accordion-body\" id=\"accordion-body-${idx}\">
+                                ${body}
+                                ${g.items.length > 20 ? `<div style=\"padding-top:8px;color:#888;font-size:0.85em;\">+${g.items.length - 20} more...</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Ouvrir le premier par défaut
+                toggleAccordionBody(0, true);
+            } catch (err) {
+                console.error('updatePlannedActionsGrouped error:', err);
+            }
+        }
+
+        function toggleAccordionBody(idx, forceOpen = false) {
+            const el = document.getElementById(`accordion-body-${idx}`);
+            if (!el) return;
+            const isOpen = el.classList.contains('open');
+            if (forceOpen) { el.classList.add('open'); return; }
+            if (isOpen) el.classList.remove('open'); else el.classList.add('open');
+        }
+
+        function formatTimeUntil(ts) {
+            const now = Date.now();
+            const diff = Number(ts) - now;
+            if (!Number.isFinite(diff)) return '-';
+            const past = diff < 0;
+            const abs = Math.abs(diff);
+            const mins = Math.round(abs / 60000);
+            if (mins < 60) return past ? `${mins}m ago` : `in ${mins}m`;
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return past ? `${h}h ${m}m ago` : `in ${h}h ${m}m`;
+        }
+
+        function formatTime(d) {
+            const dt = (d instanceof Date) ? d : new Date(d);
+            return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Auto-refresh temporaire Dashboard (45s)
+        (function setupTemporaryDashboardAutoRefresh() {
+            if (window.__dashboardAutoRefreshSetup) return;
+            window.__dashboardAutoRefreshSetup = true;
+            
+            window.startTemporaryAutoRefreshDashboard = function(durationMs = 45000, intervalMs = 30000) {
+                try {
+                    if (window.__dashboardAutoRefreshIntervalId) clearInterval(window.__dashboardAutoRefreshIntervalId);
+                    if (window.__dashboardAutoRefreshTimeoutId) clearTimeout(window.__dashboardAutoRefreshTimeoutId);
+                } catch (e) { /* no-op */ }
+                
+                // Rafraîchir immédiatement
+                try { loadDashboard(); } catch (e) { console.error(e); }
+                
+                window.__dashboardAutoRefreshIntervalId = setInterval(() => {
+                    try { 
+                        loadDashboard(); 
+                        // Recharger les scan metrics après le dashboard pour éviter l'écrasement
+                        setTimeout(() => {
+                            loadScanMetrics();
+                        }, 2000);
+                    } catch (e) { console.error(e); }
+                }, intervalMs);
+                window.__dashboardAutoRefreshTimeoutId = setTimeout(() => {
+                    try { clearInterval(window.__dashboardAutoRefreshIntervalId); } catch (e) {}
+                    window.__dashboardAutoRefreshIntervalId = null;
+                    window.__dashboardAutoRefreshTimeoutId = null;
+                }, durationMs);
+            };
+        })();
+
+        // Fonction pour charger les métriques de scan
+        async function loadScanMetrics() {
+            try {
+                const token = localStorage.getItem('authToken') || localStorage.getItem('clientToken') || localStorage.getItem('token');
+                const response = await fetch(`${API_BASE_URL}/api/scan-metrics`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const metrics = result.data;
+                    
+                    // Mettre à jour les éléments de scan metrics
+                    const tweetsFoundEl = document.getElementById('scan-tweets-found');
+                    const tweetsValidEl = document.getElementById('scan-tweets-valid');
+                    
+                    if (tweetsFoundEl) tweetsFoundEl.textContent = metrics.tweetsFound ?? 'N/A';
+                    if (tweetsValidEl) tweetsValidEl.textContent = metrics.validTweets ?? 'N/A';
+                    
+                    // Mettre à jour les métriques additionnelles si disponibles
+                    const efficiencyEl = document.getElementById('scan-efficiency');
+                    const batchesEl = document.getElementById('scan-batches');
+                    const lastScanEl = document.getElementById('scan-last-time');
+                    
+                    if (efficiencyEl && metrics.tweetsFound > 0) {
+                        const efficiency = Math.round((metrics.validTweets / metrics.tweetsFound) * 100);
+                        efficiencyEl.textContent = `${efficiency}%`;
+                    }
+                    
+                    if (batchesEl && metrics.batchesProcessed) {
+                        batchesEl.textContent = metrics.batchesProcessed;
+                    }
+                    
+                    if (lastScanEl && metrics.lastScanTime) {
+                        const scanDate = new Date(metrics.lastScanTime);
+                        if (!isNaN(scanDate.getTime())) {
+                            lastScanEl.textContent = scanDate.toLocaleTimeString('fr-FR');
+                        } else {
+                            lastScanEl.textContent = metrics.lastScanTime;
+                        }
+                    }
+                    
+                    // Mettre à jour les filtres si disponibles
+                    const repliesFilteredEl = document.getElementById('scan-replies-filtered');
+                    const retweetsFilteredEl = document.getElementById('scan-retweets-filtered');
+                    const alreadyProcessedEl = document.getElementById('scan-already-processed');
+                    
+                    if (repliesFilteredEl && metrics.breakdown && metrics.breakdown.replies !== undefined) {
+                        repliesFilteredEl.textContent = metrics.breakdown.replies;
+                    }
+                    if (retweetsFilteredEl && metrics.breakdown && metrics.breakdown.retweets !== undefined) {
+                        retweetsFilteredEl.textContent = metrics.breakdown.retweets;
+                    }
+                    if (alreadyProcessedEl && metrics.breakdown && metrics.breakdown.alreadyProcessed !== undefined) {
+                        alreadyProcessedEl.textContent = metrics.breakdown.alreadyProcessed;
+                    }
+                    
+                    console.log('[SCAN-METRICS] Dashboard metrics updated:', metrics);
+                }
+            } catch (error) {
+                console.error('[SCAN-METRICS] Error loading scan metrics:', error);
+                // Mettre des valeurs par défaut en cas d'erreur
+                const elements = [
+                    'scan-tweets-found', 'scan-tweets-valid', 'scan-efficiency', 
+                    'scan-batches', 'scan-last-time', 'scan-replies-filtered', 
+                    'scan-retweets-filtered', 'scan-already-processed'
+                ];
+                elements.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el.textContent === '-') {
+                        el.textContent = 'Error';
+                    }
+                });
+            }
+        }
+
         // Chargement initial
         loadDashboard();
+        loadScanMetrics(); // Charger les scan metrics
+        
+        // Autorefresh temporaire optimisé - 5 minutes
+        if (typeof startTemporaryAutoRefreshDashboard === 'function') {
+            startTemporaryAutoRefreshDashboard(600000, 300000);
+        }
+        
+        // Actualiser les scan metrics toutes les 5 minutes
+        setInterval(loadScanMetrics, 300000);
 
-        // Auto-refresh toutes les 30 secondes
-        setInterval(loadDashboard, 30000);
+        // ===== AUTOMATION CONTROL FUNCTIONS =====
+        
+        // Toggle automation function for floating button
+        async function toggleAutomation() {
+            const btn = document.getElementById('automationControlBtn');
+            const icon = document.getElementById('automationIcon');
+            
+            if (!btn || !icon) {
+                console.error('[TOGGLE] Button elements not found');
+                return;
+            }
+            
+            try {
+                btn.disabled = true;
+                const response = await fetch(`${API_BASE_URL}/api/automation-status`);
+                const currentData = await response.json();
+                
+                // Toggle automation
+                const toggleResponse = await fetch(`${API_BASE_URL}/api/automation-status`, { method: 'POST' });
+                const newData = await toggleResponse.json();
+                
+                // Update button appearance immediately
+                updateAutomationButton(newData.isAutomationEnabled);
+                
+                // Show notification
+                const message = newData.isAutomationEnabled ? 'Automation démarrée ✅' : 'Automation arrêtée ⏹️';
+                console.log('[TOGGLE]', message);
+                
+            } catch (error) {
+                console.error('Erreur toggle automation:', error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Update automation button appearance
+        function updateAutomationButton(isRunning) {
+            const btn = document.getElementById('automationControlBtn');
+            const icon = document.getElementById('automationIcon');
+            
+            if (!btn || !icon) return;
+            
+            if (isRunning) {
+                btn.classList.add('stop');
+                btn.title = 'Arrêter l\'automation';
+                icon.className = 'fas fa-stop';
+            } else {
+                btn.classList.remove('stop');
+                btn.title = 'Lancer l\'automation';
+                icon.className = 'fas fa-play';
+            }
+        }
+
+        // Load automation status on page load
+        async function loadAutomationStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/automation-status`);
+                const data = await response.json();
+                
+                const isEnabled = data.isAutomationEnabled || data.isEnabled || false;
+                updateAutomationButton(isEnabled);
+                
+            } catch (error) {
+                console.error('[LOAD] Status loading error:', error);
+                updateAutomationButton(false);
+            }
+        }
+
+        // Configuration d'authentification et initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Récupérer le token depuis l'URL ou localStorage
+            const urlParams = new URLSearchParams(window.location.search);
+            const tokenFromUrl = urlParams.get('token');
+            let clientToken = localStorage.getItem('clientToken');
+            
+            if (tokenFromUrl) {
+                localStorage.setItem('clientToken', tokenFromUrl);
+                clientToken = tokenFromUrl;
+                // Nettoyer l'URL
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+            
+            if (!clientToken) {
+                window.location.href = '/access.html';
+                return;
+            }
+            
+            // Configuration globale pour toutes les requêtes fetch
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options = {}) {
+                if (!options.headers) {
+                    options.headers = {};
+                }
+                
+                // Ajouter automatiquement le token pour les requêtes API
+                if (url.includes('/api/') && !options.headers.Authorization) {
+                    const token = localStorage.getItem('clientToken');
+                    if (token) {
+                        options.headers.Authorization = `Bearer ${token}`;
+                    }
+                }
+                
+                return originalFetch.call(this, url, options);
+            };
+            
+            setTimeout(loadAutomationStatus, 500); // Small delay to ensure button is rendered
+        });
     </script>
 </body>
 </html>

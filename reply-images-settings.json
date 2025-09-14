@@ -1,0 +1,7 @@
+{
+  "enabled": false,
+  "probability": 0.5,
+  "fallbackOnError": true,
+  "maxRetries": 2,
+  "retryDelay": 1000
+}

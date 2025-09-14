@@ -36,34 +36,44 @@ class DashboardDataAggregator {
     }
 
     async getConnectedAccounts() {
-        const oauth2Users = await this.loadJsonFile('oauth2-users.json');
-        
-        const accounts = [];
-        
-        if (oauth2Users && Array.isArray(oauth2Users)) {
-            for (const [accountId, userData] of oauth2Users) {
-                // Déterminer si le compte est actif basé sur l'expiration du token
-                let isActive = true;
-                if (userData.expiresAt) {
-                    const expirationTime = new Date(userData.expiresAt);
-                    const now = new Date();
-                    isActive = expirationTime > now; // Actif si le token n'est pas expiré
+        try {
+            // Utiliser le gestionnaire OAuth2 qui sait déchiffrer les données
+            const { getOAuth2Manager } = require('./oauth2-manager');
+            const oauth2Manager = getOAuth2Manager();
+            const oauth2Users = oauth2Manager.getAllUsers();
+            
+            const accounts = [];
+            
+            if (oauth2Users && Array.isArray(oauth2Users)) {
+                for (const userData of oauth2Users) {
+                    // Déterminer si le compte est actif basé sur l'expiration du token
+                    let isActive = true;
+                    if (userData.expiresAt) {
+                        const expirationTime = new Date(userData.expiresAt);
+                        const now = new Date();
+                        isActive = expirationTime > now; // Actif si le token n'est pas expiré
+                    }
+                    
+                    accounts.push({
+                        id: userData.id,
+                        username: userData.username,
+                        name: userData.name,
+                        connectedAt: userData.connectedAt,
+                        expiresAt: userData.expiresAt,
+                        isActive: isActive,
+                        authMethod: userData.authMethod || 'oauth2',
+                        scopes: userData.scopes,
+                        scopesGranted: userData.scopesGranted,
+                        accessToken: userData.accessToken
+                    });
                 }
-                
-                accounts.push({
-                    id: accountId,
-                    username: userData.username,
-                    name: userData.name,
-                    connectedAt: userData.connectedAt,
-                    expiresAt: userData.expiresAt,
-                    isActive: isActive,
-                    authMethod: userData.authMethod,
-                    scopes: userData.scopes
-                });
             }
+            
+            return accounts;
+        } catch (error) {
+            console.error('[DASHBOARD] Erreur chargement comptes OAuth2:', error.message);
+            return [];
         }
-        
-        return accounts;
     }
 
     async getActionsHistory() {

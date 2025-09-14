@@ -5,14 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Actions History - X-AutoRaider</title>
     <script src="components/navbar.js"></script>
+    <script src="components/floating-automation-button.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
             min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding-top: 70px;
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            padding-top: 80px;
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         
         .container-fluid {
@@ -97,6 +102,34 @@
             padding: 4px 8px;
             border-radius: 12px;
             font-size: 11px;
+        }
+        
+        .metric-card, .analytics-card, .quality-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        
+        .metric-card:hover, .analytics-card:hover, .quality-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1da1f2;
+            margin-top: 5px;
+        }
+        
+        .analytics-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
         }
         
         .stats-row {
@@ -255,6 +288,65 @@
                 font-size: 11px;
             }
         }
+
+        /* Floating buttons - unified styling */
+        .floating-btn {
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .floating-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .automation-control-btn {
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .automation-control-btn.stop {
+            background: linear-gradient(45deg, #dc3545, #e74c3c);
+            animation: pulse-running 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-running {
+            0%, 100% {
+                box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 6px 25px rgba(220, 53, 69, 0.7);
+                transform: scale(1.05);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .floating-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 1rem;
+            }
+            
+            .automation-control-btn {
+                bottom: 20px;
+                right: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -265,9 +357,9 @@
             <div class="card-body text-center">
                 <h1 class="mb-0">
                     <i class="bi bi-clock-history me-2"></i>
-                    Raid Action History
+                    Raid Action History & Analytics
                 </h1>
-                <p class="mb-0 mt-2">Detailed tracking of all automated alpha raids and engagement</p>
+                <p class="mb-0 mt-2">Detailed tracking of all automated alpha raids and advanced performance analytics</p>
             </div>
         </div>
 
@@ -382,6 +474,47 @@
             </div>
         </div>
 
+        <!-- Nouvelles sections Analytics Avancés -->
+        <div class="analytics-section">
+            <h5><i class="bi bi-speedometer2 me-2"></i>Métriques de Performance</h5>
+            <div id="performanceMetrics">
+                <div class="text-center text-muted">
+                    <div class="spinner-border spinner-border-sm me-2"></div>
+                    Chargement des métriques...
+                </div>
+            </div>
+        </div>
+        
+        <div class="analytics-section">
+            <h5><i class="bi bi-graph-up-arrow me-2"></i>Analytics Comportementales</h5>
+            <div id="behavioralAnalytics">
+                <div class="text-center text-muted">
+                    <div class="spinner-border spinner-border-sm me-2"></div>
+                    Chargement des analytics...
+                </div>
+            </div>
+        </div>
+        
+        <div class="analytics-section">
+            <h5><i class="bi bi-shield-check me-2"></i>Métriques de Qualité</h5>
+            <div id="qualityMetrics">
+                <div class="text-center text-muted">
+                    <div class="spinner-border spinner-border-sm me-2"></div>
+                    Chargement de la qualité...
+                </div>
+            </div>
+        </div>
+        
+        <div class="analytics-section">
+            <h5><i class="bi bi-lightbulb me-2"></i>Recommandations Intelligentes</h5>
+            <div id="recommendations">
+                <div class="text-center text-muted">
+                    <div class="spinner-border spinner-border-sm me-2"></div>
+                    Chargement des recommandations...
+                </div>
+            </div>
+        </div>
+
         <!-- Section Analytics (masquée par défaut) -->
         <div id="analyticsSection" style="display: none;">
             <!-- Graphiques temporels -->
@@ -442,9 +575,89 @@
         </div>
     </div>
 
+    <!-- Automation Control Button -->
+    <button class="floating-btn automation-control-btn" id="automationControlBtn" onclick="toggleAutomation()" title="Lancer/Arrêter l'automation">
+        <i class="fas fa-play" id="automationIcon"></i>
+    </button>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        // ===== AUTOMATION CONTROL FUNCTIONS =====
+        const API_BASE_URL = window.location.origin;
+
+        // Toggle automation function for floating button
+        async function toggleAutomation() {
+            const btn = document.getElementById('automationControlBtn');
+            const icon = document.getElementById('automationIcon');
+            
+            if (!btn || !icon) {
+                console.error('[TOGGLE] Button elements not found');
+                return;
+            }
+            
+            try {
+                btn.disabled = true;
+                const response = await fetch(`${API_BASE_URL}/api/automation-status`);
+                const currentData = await response.json();
+                
+                // Toggle automation
+                const toggleResponse = await fetch(`${API_BASE_URL}/api/automation-status`, { method: 'POST' });
+                const newData = await toggleResponse.json();
+                
+                // Update button appearance immediately
+                updateAutomationButton(newData.isAutomationEnabled);
+                
+                // Show notification
+                const message = newData.isAutomationEnabled ? 'Automation démarrée ✅' : 'Automation arrêtée ⏹️';
+                console.log('[TOGGLE]', message);
+                
+            } catch (error) {
+                console.error('Erreur toggle automation:', error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Update automation button appearance
+        function updateAutomationButton(isRunning) {
+            const btn = document.getElementById('automationControlBtn');
+            const icon = document.getElementById('automationIcon');
+            
+            if (!btn || !icon) return;
+            
+            if (isRunning) {
+                btn.classList.add('stop');
+                btn.title = 'Arrêter l\'automation';
+                icon.className = 'fas fa-stop';
+            } else {
+                btn.classList.remove('stop');
+                btn.title = 'Lancer l\'automation';
+                icon.className = 'fas fa-play';
+            }
+        }
+
+        // Load automation status on page load
+        async function loadAutomationStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/automation-status`);
+                const data = await response.json();
+                
+                const isEnabled = data.isAutomationEnabled || data.isEnabled || false;
+                updateAutomationButton(isEnabled);
+                
+            } catch (error) {
+                console.error('[LOAD] Status loading error:', error);
+                updateAutomationButton(false);
+            }
+        }
+
+        // Initialize automation status when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(loadAutomationStatus, 500); // Small delay to ensure button is rendered
+        });
+
+        // ===== ACTIONS HISTORY FUNCTIONS =====
         let allActions = [];
         let accounts = [];
         let filteredActions = [];
@@ -462,8 +675,28 @@
         // Charger les comptes
         async function loadAccounts() {
             try {
-                const response = await fetch('/api/accounts');
-                const data = await response.json();
+                const token = localStorage.getItem('clientToken');
+                const response = await fetch('/api/accounts', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const responseText = await response.text();
+                console.log('[ACCOUNTS] Response:', responseText.substring(0, 200));
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('[ACCOUNTS] Failed to parse JSON:', parseError);
+                    console.error('[ACCOUNTS] Response text:', responseText);
+                    throw new Error('Invalid JSON response from /api/accounts');
+                }
                 
                 // Vérifier que les données sont un tableau
                 if (Array.isArray(data)) {
@@ -498,7 +731,14 @@
             
             try {
                 console.log('Fetching /api/actions-history...');
-                const response = await fetch('/api/actions-history');
+                const token = localStorage.getItem('clientToken');
+                const response = await fetch('/api/actions-history', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
                 console.log('Response status:', response.status);
                 const data = await response.json();
                 console.log('Response received, parsing...');
@@ -534,14 +774,18 @@
             
             // 🔄 NOUVELLE LOGIQUE : Utiliser les données de l'API enrichie
             if (data && data.actions && Array.isArray(data.actions)) {
-                // Utiliser directement les actions formatées de l'API
+                // Utiliser directement les actions formatées de l'API avec toutes les données
                 return data.actions.map(action => ({
                     tweetId: action.tweetId,
                     accountId: action.accountId,
-                    accountUsername: action.accountUsername,
+                    accountUsername: action.accountUsername || action.username,
+                    username: action.username || action.accountUsername,
                     actionType: action.actionType,
                     timestamp: new Date(action.timestamp),
-                    tweetData: action.tweetData || null
+                    tweetData: action.tweetData || null,
+                    targetUser: action.targetUser,
+                    tweetText: action.tweetText,
+                    details: action.details
                 }));
             }
             
@@ -639,36 +883,59 @@
             };
             
             const actionInfo = actionIcons[action.actionType];
-            const formattedDate = action.timestamp.toLocaleString('en-US');
+            const formattedDate = action.timestamp.toLocaleString('fr-FR');
             const tweetUrl = `https://twitter.com/i/status/${action.tweetId}`;
+            
+            // Detailed information from API
+            const influencerName = action.targetUser || 'Unknown Influencer';
+            const tweetText = action.tweetText || action.details || '';
+            const displayText = tweetText.length > 200 ? tweetText.substring(0, 200) + '...' : tweetText;
             
             return `
                 <div class="card action-card action-${action.actionType}">
                     <div class="card-body">
-                        <div class="row align-items-center">
+                        <div class="row align-items-start">
                             <div class="col-auto">
                                 <div class="action-icon ${actionInfo.class}">
                                     <i class="${actionInfo.icon}"></i>
                                 </div>
                             </div>
                             <div class="col">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="flex-grow-1">
                                         <h6 class="mb-1">
-                                            ${actionInfo.label}
-                                            <span class="account-badge ms-2">@${action.accountUsername}</span>
+                                            <strong>${actionInfo.label}</strong> on tweet by 
+                                            <span class="text-primary">@${influencerName}</span>
                                         </h6>
-                                        <p class="mb-1 text-muted">
-                                            <i class="bi bi-twitter me-1"></i>
-                                            Tweet ID: ${action.tweetId}
-                                            <a href="${tweetUrl}" target="_blank" class="ms-2">
-                                                <i class="bi bi-box-arrow-up-right"></i>
-                                            </a>
-                                        </p>
+                                        <div class="mb-2">
+                                            <span class="account-badge">Account: @${action.username || action.accountUsername}</span>
+                                            <span class="date-badge ms-2">${formattedDate}</span>
+                                        </div>
                                     </div>
-                                    <span class="date-badge">${formattedDate}</span>
                                 </div>
-                                ${action.tweetData ? createTweetPreview(action.tweetData) : ''}
+                                
+                                ${tweetText ? `
+                                <div class="tweet-preview mb-2">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="bi bi-person-circle me-1 text-muted"></i>
+                                        <small class="text-muted">@${influencerName}</small>
+                                    </div>
+                                    <p class="mb-0">${displayText}</p>
+                                </div>
+                                ` : ''}
+                                
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="text-muted small">
+                                        <i class="bi bi-twitter me-1"></i>
+                                        ID: ${action.tweetId}
+                                    </div>
+                                    <div>
+                                        <a href="${tweetUrl}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-box-arrow-up-right me-1"></i>
+                                            View Tweet
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1049,7 +1316,245 @@
             applyFilters();
         }
 
-        // Removed auto-refresh - manual refresh only
+        // Nouvelles fonctions pour analytics avancés
+        async function loadAdvancedAnalytics() {
+            try {
+                const token = localStorage.getItem('clientToken');
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                };
+                
+                const [performance, behavioral, quality, recommendations] = await Promise.all([
+                    fetch('/api/analytics/performance', { headers }).then(r => r.json()),
+                    fetch('/api/analytics/behavioral', { headers }).then(r => r.json()),
+                    fetch('/api/analytics/quality', { headers }).then(r => r.json()),
+                    fetch('/api/analytics/recommendations', { headers }).then(r => r.json())
+                ]);
+
+                updatePerformanceMetrics(performance);
+                updateBehavioralAnalytics(behavioral);
+                updateQualityMetrics(quality);
+                updateRecommendations(recommendations);
+            } catch (error) {
+                console.error('Erreur chargement analytics avancés:', error);
+            }
+        }
+
+        function updatePerformanceMetrics(data) {
+            if (!data.success || !data.data) return;
+            
+            const metrics = data.data;
+            const container = document.getElementById('performanceMetrics');
+            if (!container) return;
+
+            // Valeurs par défaut sécurisées
+            const conversionRate = Number((metrics.conversionRate || 0) * 100);
+            const accountEfficiency = Number((metrics.accountEfficiency || 0) * 100);
+            const velocity = Number(metrics.velocity || 0);
+            const quotaROI = Number((metrics.quotaROI || 0) * 100);
+
+            container.innerHTML = `
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <h6>Taux de Conversion</h6>
+                            <div class="metric-value">${conversionRate.toFixed(1)}%</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <h6>Efficacité Comptes</h6>
+                            <div class="metric-value">${accountEfficiency.toFixed(1)}%</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <h6>Vélocité</h6>
+                            <div class="metric-value">${velocity.toFixed(1)} act/h</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <h6>ROI Quotas</h6>
+                            <div class="metric-value">${quotaROI.toFixed(1)}%</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateBehavioralAnalytics(data) {
+            if (!data.success || !data.data) return;
+            
+            const analytics = data.data;
+            const container = document.getElementById('behavioralAnalytics');
+            if (!container) return;
+
+            // Valeurs par défaut sécurisées
+            const optimalHour = Number((analytics.optimalTiming && analytics.optimalTiming.bestHour) || 12);
+            const peakDay = (analytics.optimalTiming && analytics.optimalTiming.peakDay) || 'Lundi';
+            const growth = Number((analytics.seasonalTrends && analytics.seasonalTrends.growth) || 0);
+            const fatigueLevel = Number((analytics.accountFatigue && analytics.accountFatigue.averageLevel) || 0);
+
+            container.innerHTML = `
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="analytics-card">
+                            <h6><i class="bi bi-clock"></i> Timing Optimal</h6>
+                            <p>Meilleure heure: <strong>${optimalHour}h</strong></p>
+                            <p>Jour de pointe: <strong>${peakDay}</strong></p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="analytics-card">
+                            <h6><i class="bi bi-graph-up"></i> Tendances</h6>
+                            <p>Croissance: <strong>${growth > 0 ? '+' : ''}${(growth * 100).toFixed(1)}%</strong></p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="analytics-card">
+                            <h6><i class="bi bi-battery-half"></i> Fatigue Comptes</h6>
+                            <p>Niveau moyen: <strong>${(fatigueLevel * 100).toFixed(0)}%</strong></p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateQualityMetrics(data) {
+            if (!data.success || !data.data) return;
+            
+            const metrics = data.data;
+            const container = document.getElementById('qualityMetrics');
+            if (!container) return;
+
+            // Valeurs par défaut sécurisées
+            const systemHealth = Number(metrics.systemHealth || 0);
+            const actionQuality = Number(metrics.actionQuality || 0);
+            const anomalyCount = Number(metrics.anomalyCount || 0);
+            
+            const healthColor = systemHealth > 0.8 ? 'success' : systemHealth > 0.6 ? 'warning' : 'danger';
+
+            container.innerHTML = `
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="quality-card">
+                            <h6><i class="bi bi-heart-pulse"></i> Santé Système</h6>
+                            <div class="progress mb-2">
+                                <div class="progress-bar bg-${healthColor}" style="width: ${(systemHealth * 100)}%"></div>
+                            </div>
+                            <small>${(systemHealth * 100).toFixed(1)}%</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="quality-card">
+                            <h6><i class="bi bi-star"></i> Qualité Actions</h6>
+                            <div class="metric-value">${(actionQuality * 100).toFixed(1)}%</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="quality-card">
+                            <h6><i class="bi bi-exclamation-triangle"></i> Anomalies</h6>
+                            <div class="metric-value text-${anomalyCount > 0 ? 'danger' : 'success'}">${anomalyCount}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateRecommendations(data) {
+            if (!data.success || !data.data) return;
+            
+            const recommendations = data.data;
+            const container = document.getElementById('recommendations');
+            if (!container) return;
+
+            // Vérifier que recommendations est un tableau
+            if (!Array.isArray(recommendations)) {
+                container.innerHTML = '<p class="text-muted">Aucune recommandation pour le moment</p>';
+                return;
+            }
+
+            const html = recommendations.map(rec => {
+                const priorityClass = (rec.priority === 'high') ? 'danger' : (rec.priority === 'medium') ? 'warning' : 'info';
+                const title = rec.title || 'Recommandation';
+                const description = rec.description || 'Aucune description disponible';
+                
+                return `
+                    <div class="alert alert-${priorityClass} d-flex align-items-center">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        <div>
+                            <strong>${title}</strong><br>
+                            <small>${description}</small>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html || '<p class="text-muted">Aucune recommandation pour le moment</p>';
+        }
+
+        // Charger les analytics au démarrage
+        document.addEventListener('DOMContentLoaded', function() {
+            // Configuration d'authentification
+            const urlParams = new URLSearchParams(window.location.search);
+            const tokenFromUrl = urlParams.get('token');
+            let clientToken = localStorage.getItem('clientToken');
+            
+            if (tokenFromUrl) {
+                localStorage.setItem('clientToken', tokenFromUrl);
+                clientToken = tokenFromUrl;
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+            
+            if (!clientToken) {
+                window.location.href = '/access.html';
+                return;
+            }
+            
+            // Configuration globale pour toutes les requêtes fetch
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options = {}) {
+                if (!options.headers) {
+                    options.headers = {};
+                }
+                
+                if (url.includes('/api/') && !options.headers.Authorization) {
+                    const token = localStorage.getItem('clientToken');
+                    if (token) {
+                        // Nettoyer le token des caractères indésirables
+                        const cleanToken = token.trim().replace(/[\r\n\t]/g, '');
+                        options.headers.Authorization = `Bearer ${cleanToken}`;
+                        console.log('[FETCH] Token utilisé:', cleanToken.substring(0, 50) + '...');
+                    } else {
+                        console.log('[FETCH] Aucun token trouvé dans localStorage');
+                    }
+                }
+                
+                return originalFetch.call(this, url, options).catch(error => {
+                    if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+                        console.log('[FETCH] Erreur 401 - Token probablement invalide, redirection vers login');
+                        localStorage.removeItem('clientToken');
+                        window.location.href = '/access.html';
+                    }
+                    throw error;
+                });
+            };
+            
+            loadAdvancedAnalytics();
+            
+            // Refresh périodique des analytics (toutes les 3 minutes)
+            setInterval(loadAdvancedAnalytics, 180000);
+        });
+
+        // Auto-refresh toutes les 2 minutes pour voir les nouvelles actions
+        setInterval(() => {
+            console.log('[AUTO-REFRESH] Actualisation automatique des actions...');
+            loadActions();
+        }, 120000); // 2 minutes
     </script>
 </body>
 </html>

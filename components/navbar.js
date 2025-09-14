@@ -8,14 +8,14 @@ function createNavbar() {
     <!-- Navigation Header -->
     <nav class="navbar">
         <div class="nav-container">
-            <div class="nav-brand">
+            <div class="nav-brand" onclick="window.location.href='index.html'" style="cursor: pointer;">
                 <i class="fas fa-rocket"></i>
                 X-AutoRaider
             </div>
             
             <!-- Desktop Menu -->
             <div class="nav-menu">
-                <a href="dashboard.html" class="nav-link">
+                <a href="dashboard.html" class="nav-link dashboard-btn">
                     <i class="fas fa-tachometer-alt"></i>
                     Dashboard & Stats
                 </a>
@@ -38,12 +38,11 @@ function createNavbar() {
             </div>
             
             <!-- User Section -->
-            <div class="nav-user">
-                <span id="nav-username">Admin</span>
-                <button class="logout-btn" onclick="logout()">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Disconnect
-                </button>
+            <div class="nav-actions">
+                <div class="nav-user">
+                    <span id="nav-username">Admin</span>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
             </div>
             
             <!-- Hamburger Menu -->
@@ -56,7 +55,7 @@ function createNavbar() {
         
         <!-- Mobile Menu -->
         <div class="mobile-menu" id="mobileMenu">
-            <a href="dashboard.html" class="mobile-nav-link">
+            <a href="dashboard.html" class="mobile-nav-link dashboard-btn-mobile">
                 <i class="fas fa-tachometer-alt"></i>
                 Dashboard
             </a>
@@ -78,10 +77,9 @@ function createNavbar() {
             </a>
             
             <div class="mobile-user">
-                <span id="mobile-nav-username">Admin</span>
                 <button class="mobile-logout-btn" onclick="logout()">
                     <i class="fas fa-sign-out-alt"></i>
-                    Disconnect
+                    Logout
                 </button>
             </div>
         </div>
@@ -97,12 +95,12 @@ function getNavbarStyles() {
             top: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.95) 100%);
-            backdrop-filter: blur(25px);
-            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             z-index: 1000;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s ease;
         }
 
         .nav-container {
@@ -118,49 +116,50 @@ function getNavbarStyles() {
         .nav-brand {
             font-size: 1.6rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #1da1f2 0%, #0d8bd9 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #1da1f2;
             display: flex;
             align-items: center;
-            gap: 0.6rem;
-            text-shadow: 0 2px 4px rgba(29, 161, 242, 0.1);
+            gap: 0.5rem;
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-brand:hover {
+            color: #0d8bd9;
+            transform: translateY(-1px);
         }
         
         .nav-brand i {
-            background: linear-gradient(135deg, #1da1f2 0%, #0d8bd9 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            filter: drop-shadow(0 2px 4px rgba(29, 161, 242, 0.2));
+            color: #1da1f2;
         }
 
         .nav-menu {
             display: flex;
             align-items: center;
-            gap: 2rem;
+            gap: 1.5rem;
         }
 
         .nav-link {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            color: #64748b;
+            color: #475569;
             text-decoration: none;
             font-weight: 500;
-            padding: 0.6rem 1.2rem;
-            border-radius: 12px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
 
         .nav-link:hover {
             color: #1da1f2;
-            background: rgba(29, 161, 242, 0.08);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(29, 161, 242, 0.15);
+            background: rgba(29, 161, 242, 0.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         .nav-link:before {
@@ -180,19 +179,19 @@ function getNavbarStyles() {
 
         /* Bouton Home spécial */
         .home-btn {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            background: #f8fafc;
             border: 1px solid rgba(29, 161, 242, 0.2);
             color: #1da1f2 !important;
             font-weight: 600;
-            box-shadow: 0 2px 8px rgba(29, 161, 242, 0.1);
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         }
 
         .home-btn:hover {
-            background: linear-gradient(135deg, #1da1f2 0%, #0d8bd9 100%);
+            background: #1da1f2;
             color: white !important;
             border-color: #1da1f2;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(29, 161, 242, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         .home-btn i {
@@ -203,6 +202,31 @@ function getNavbarStyles() {
             transform: scale(1.1);
         }
 
+        /* Bouton Dashboard spécial */
+        .dashboard-btn {
+            background: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            color: white !important;
+            font-weight: 600;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .dashboard-btn:hover {
+            background: #d97706;
+            color: white !important;
+            border-color: #d97706;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .dashboard-btn i {
+            transition: transform 0.3s ease;
+        }
+
+        .dashboard-btn:hover i {
+            transform: scale(1.1);
+        }
+
         .nav-user {
             display: flex;
             align-items: center;
@@ -210,28 +234,34 @@ function getNavbarStyles() {
         }
 
         #nav-username {
-            color: var(--text-primary);
-            font-weight: 500;
+            display: none;
         }
 
         .logout-btn {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            background: var(--danger-color);
+            background: #ef4444;
             color: white;
             border: none;
-            padding: 0.5rem 1rem;
+            padding: 0.75rem 1rem;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 500;
-            transition: var(--transition);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
 
         .logout-btn:hover {
-            background: #c53030;
+            background: #dc2626;
             transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
         }
+        
+        .logout-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+
 
         /* Hamburger Menu */
         .hamburger {
@@ -300,7 +330,7 @@ function getNavbarStyles() {
 
         /* Bouton Home mobile spécial */
         .home-btn-mobile {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            background: #f8fafc;
             border: 1px solid rgba(29, 161, 242, 0.2);
             color: #1da1f2 !important;
             font-weight: 600;
@@ -309,18 +339,35 @@ function getNavbarStyles() {
         }
 
         .home-btn-mobile:hover {
-            background: linear-gradient(135deg, #1da1f2 0%, #0d8bd9 100%);
+            background: #1da1f2;
             color: white !important;
             border-color: #1da1f2;
             box-shadow: 0 4px 12px rgba(29, 161, 242, 0.3);
         }
 
+        /* Bouton Dashboard mobile spécial */
+        .dashboard-btn-mobile {
+            background: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            color: white !important;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
+            border-radius: 12px;
+        }
+
+        .dashboard-btn-mobile:hover {
+            background: #d97706;
+            color: white !important;
+            border-color: #d97706;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
         .mobile-user {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
             padding-top: 1rem;
-            border-top: 1px solid var(--border-color);
+            border-top: 1px solid #e2e8f0;
             margin-top: 1rem;
         }
 
@@ -328,14 +375,14 @@ function getNavbarStyles() {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            background: var(--danger-color);
+            background: #ef4444;
             color: white;
             border: none;
             padding: 0.5rem 1rem;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 500;
-            transition: var(--transition);
+            transition: all 0.2s ease;
         }
 
         /* Responsive */
@@ -373,6 +420,7 @@ function initNavbar() {
     if (container) {
         container.classList.add('main-container');
     }
+    
 }
 
 // Fonction pour le menu hamburger
@@ -399,13 +447,18 @@ document.addEventListener('click', function(event) {
 // Fonction de déconnexion
 function logout() {
     if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
-        window.location.href = 'login.html';
+        localStorage.removeItem('clientToken');
+        localStorage.removeItem('clientId');
+        window.location.href = '/access.html';
     }
 }
 
+
 // Auto-initialisation si le DOM est déjà chargé
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initNavbar);
+    document.addEventListener('DOMContentLoaded', () => {
+        initNavbar();
+    });
 } else {
     initNavbar();
 }

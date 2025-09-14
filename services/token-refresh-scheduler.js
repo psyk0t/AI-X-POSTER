@@ -10,14 +10,16 @@
  */
 
 const { getOAuth2Manager } = require('./oauth2-manager');
+const { TimerManager } = require('./timer-utils');
 
 class TokenRefreshScheduler {
     constructor() {
         this.oauth2Manager = null;
-        this.refreshInterval = null;
+        this.refreshInterval = null; // legacy (compat)
         this.checkIntervalMs = 5 * 60 * 1000; // Vérification toutes les 5 minutes
         this.refreshBeforeExpiryMs = 30 * 60 * 1000; // Refresh 30min avant expiration
         this.isRunning = false;
+        this.timers = new TimerManager('token-refresh');
     }
 
     /**
@@ -36,25 +38,28 @@ class TokenRefreshScheduler {
         console.log(`[TOKEN-SCHEDULER] Check interval: ${this.checkIntervalMs / 60000} minutes`);
         console.log(`[TOKEN-SCHEDULER] Refresh before expiry: ${this.refreshBeforeExpiryMs / 60000} minutes`);
 
-        // Première vérification immédiate
-        this.checkAndRefreshTokens();
-
-        // Vérifications périodiques
-        this.refreshInterval = setInterval(() => {
-            this.checkAndRefreshTokens();
-        }, this.checkIntervalMs);
+        // Vérifications périodiques (avec exécution immédiate)
+        this.timers.setInterval('check', () => this.checkAndRefreshTokens(), this.checkIntervalMs, { immediate: true, unref: true });
     }
 
     /**
      * Arrête le scheduler
      */
     stop() {
-        if (this.refreshInterval) {
+        if (this.timers) this.timers.clearAll();
+        if (this.refreshInterval) { // compat
             clearInterval(this.refreshInterval);
             this.refreshInterval = null;
         }
         this.isRunning = false;
         console.log('[TOKEN-SCHEDULER] Stopped');
+    }
+
+    /**
+     * Nettoyage
+     */
+    cleanup() {
+        this.stop();
     }
 
     /**

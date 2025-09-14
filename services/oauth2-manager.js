@@ -2,6 +2,7 @@ const { TwitterApi } = require('twitter-api-v2');
 const fs = require('fs');
 const path = require('path');
 const { logToFile } = require('./logs-optimized');
+const { TimerManager } = require('./timer-utils');
 
 /**
  * MULTI-USER OAUTH 2.0 SERVICE
@@ -15,6 +16,7 @@ class OAuth2Manager {
         this.users = new Map(); // In-memory storage of OAuth sessions
         this.persistentUsers = new Map(); // Persistent token storage
         this.invitations = new Map(); // Active invitation tokens
+        this.timers = new TimerManager('oauth2');
         
         this.appCredentials = {
             clientId: process.env.X_CLIENT_ID,
@@ -25,7 +27,9 @@ class OAuth2Manager {
         this.dataFile = path.join(__dirname, '..', 'oauth2-users.json');
         
         // Load existing users
-        this.loadUsersFromFile();
+        this.loadUsersFromFile().catch(error => {
+            logToFile(`[OAUTH2] Async loading error: ${error.message}`);
+        });
         
         // Start proactive token refresh scheduler
         this.startTokenRefreshScheduler();
@@ -81,12 +85,21 @@ class OAuth2Manager {
         'like.write',        // Create likes ⭐ CRITICAL
         'follows.read',      // Read follows
         'follows.write',     // Create follows
+        'media.write',       // Upload images/media ⭐ CRITICAL
         'offline.access'     // Refresh tokens ⭐ CRITICAL
     ]) {
-        // Check that invitation token is valid
-        const invitation = this.invitations.get(inviteToken);
+        // Créer automatiquement l'invitation si elle n'existe pas
+        let invitation = this.invitations.get(inviteToken);
         if (!invitation) {
-            throw new Error('Invalid or expired invitation token');
+            console.log(`[OAUTH2] Creating missing invitation for token: ${inviteToken}`);
+            const projectId = inviteToken.includes('_') ? inviteToken.split('_')[2] : 'default';
+            this.invitations.set(inviteToken, {
+                projectId,
+                createdAt: new Date(),
+                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
+                status: 'pending'
+            });
+            invitation = this.invitations.get(inviteToken);
         }
 
         if (invitation.expiresAt < new Date()) {
@@ -130,6 +143,16 @@ class OAuth2Manager {
     }
 
     /**
+     * Cleanup timers
+     */
+    cleanup() {
+        if (this.timers) {
+            this.timers.clearAll();
+        }
+        logToFile('[OAUTH2] Timers cleaned up');
+    }
+
+    /**
      * STEP 3: Handle OAuth 2.0 callback
      * Exchange code for tokens and connect user
      */
@@ -161,13 +184,44 @@ class OAuth2Manager {
 
             // Exchange code for tokens
             logToFile(`[OAUTH2] Attempting OAuth code exchange...`);
-            const { accessToken, refreshToken, expiresIn } = await client.loginWithOAuth2({
+            const tokenResult = await client.loginWithOAuth2({
                 code,
                 codeVerifier: userData.codeVerifier,
                 redirectUri: this.callbackUrl,
             });
 
+            const { accessToken, refreshToken, expiresIn } = tokenResult || {};
             logToFile(`[OAUTH2] Tokens obtained successfully - accessToken: ${accessToken ? 'present' : 'missing'}`);
+
+            // --- AUDIT DES SCOPES ACCORDÉS ---
+            const requestedScopes = Array.isArray(userData.scopes) ? userData.scopes : [];
+            let grantedScopes = [];
+            // Le SDK peut renvoyer 'scope' (string espace-séparé) ou 'scopes' (array)
+            if (Array.isArray(tokenResult?.scopes)) {
+                grantedScopes = tokenResult.scopes;
+            } else if (typeof tokenResult?.scope === 'string') {
+                grantedScopes = tokenResult.scope.split(/\s+/).filter(Boolean);
+            } else if (Array.isArray(tokenResult?.scope)) {
+                grantedScopes = tokenResult.scope;
+            } else {
+                grantedScopes = [];
+            }
+
+            const criticalScopes = ['tweet.write', 'like.write', 'media.write', 'offline.access'];
+            const missingCritical = criticalScopes.filter(s => !grantedScopes.includes(s));
+            const auditSummary = {
+                requested: requestedScopes,
+                granted: grantedScopes,
+                missingCritical,
+                criticalOk: missingCritical.length === 0
+            };
+            logToFile(`[OAUTH2][SCOPES] Audit scopes -> requested=${JSON.stringify(requestedScopes)}, granted=${JSON.stringify(grantedScopes)}, missingCritical=${JSON.stringify(missingCritical)}`);
+
+            if (missingCritical.length > 0) {
+                logToFile(`[OAUTH2][SCOPES][WARNING] Missing critical scopes: ${missingCritical.join(', ')}`);
+            } else {
+                logToFile('[OAUTH2][SCOPES] All critical scopes granted');
+            }
 
             // Get user information avec retry pour éviter 429 lors de la connexion
             const userClient = new TwitterApi(accessToken);
@@ -218,12 +272,18 @@ class OAuth2Manager {
                 projectId: userData.projectId,
                 connectedAt: new Date(),
                 authMethod: 'oauth2',
-                scopes: userData.scopes
+                // Pour compatibilité, garder l'ancien champ
+                scopes: userData.scopes,
+                // Nouveaux champs d’audit
+                scopesRequested: requestedScopes,
+                scopesGranted: grantedScopes,
+                missingCriticalScopes: missingCritical,
+                criticalScopesOk: missingCritical.length === 0
             };
 
             // Store user persistently
             this.persistentUsers.set(me.data.id, newUser);
-            this.saveUsersToFile();
+            await this.saveUsersToFile();
 
             // Clean up temporary data
             this.users.delete(inviteToken);
@@ -256,8 +316,10 @@ class OAuth2Manager {
 
     /**
      * Gets a Twitter OAuth 2.0 client for a user
+     * @param {string} userId - User ID
+     * @param {boolean} skipValidation - Skip v2.me() validation to avoid rate limits
      */
-    async getClientForUser(userId) {
+    async getClientForUser(userId, skipValidation = false) {
         const user = this.persistentUsers.get(userId);
         if (!user) {
             throw new Error(`User ${userId} not found`);
@@ -287,30 +349,80 @@ class OAuth2Manager {
         // Create client and test it with rate limit protection
         const client = new TwitterApi(user.accessToken);
         
+        // Skip validation if requested (for cached clients or search operations)
+        if (skipValidation) {
+            logToFile(`[OAUTH2] Skipping validation for @${user.username} (skipValidation=true)`);
+            return client;
+        }
+        
         try {
             // Test the client with v2.me() to ensure it works
             await client.v2.me();
             return client;
         } catch (error) {
             const errorCode = error.code || error.status || 'UNKNOWN';
+            const errorMessage = error.message || String(error);
+            const errorData = error && error.data ? JSON.stringify(error.data) : 'No data';
+            
+            // Log détaillé
+            logToFile(`[OAUTH2][VALIDATE][${errorCode}] Client validation failed for user ${userId} (@${user.username}): ${errorMessage} | data=${errorData}`);
             
             if (errorCode === 429) {
                 // Rate limit error - throw specific error to be handled by caller
-                logToFile(`[OAUTH2][429] Rate limit reached for user ${userId} (@${user.username}) during client validation`);
                 const rateLimitError = new Error(`Rate limit reached for @${user.username}`);
                 rateLimitError.code = 429;
                 rateLimitError.userId = userId;
                 rateLimitError.username = user.username;
                 throw rateLimitError;
-            } else if (errorCode === 403) {
-                // Authorization error
-                logToFile(`[OAUTH2][403] Authorization error for user ${userId} (@${user.username}) - token may be invalid`);
-                throw new Error(`Authorization failed for @${user.username} - reconnection may be required`);
-            } else {
-                // Other errors
-                logToFile(`[OAUTH2][${errorCode}] Client validation failed for user ${userId} (@${user.username}): ${error.message}`);
-                throw error;
             }
+            
+            if (errorCode === 403) {
+                // Authorization error -> marquer pour reconnexion
+                logToFile(`[OAUTH2][403] Authorization error for user ${userId} (@${user.username}) - token may be invalid`);
+                try {
+                    const u = this.persistentUsers.get(userId) || user;
+                    this.persistentUsers.set(userId, {
+                        ...u,
+                        isActive: false,
+                        requiresReconnection: true,
+                        lastValidationError: { code: 403, message: errorMessage, at: new Date() }
+                    });
+                    await this.saveUsersToFile();
+                } catch (_) {}
+                throw new Error(`Authorization failed for @${user.username} - reconnection may be required`);
+            }
+            
+            // Essayer un refresh si possible pour erreurs 400/401/UNKNOWN ou réseau générique "Request failed"
+            const shouldAttemptRefresh = (
+                errorCode === 400 || errorCode === 401 || errorCode === 'UNKNOWN' || /request failed/i.test(errorMessage)
+            ) && !!user.refreshToken;
+            
+            if (shouldAttemptRefresh) {
+                logToFile(`[OAUTH2] Attempting recovery via token refresh for @${user.username} after validation failure (${errorCode})`);
+                try {
+                    const updated = await this.refreshUserToken(userId);
+                    const retryClient = new TwitterApi(updated.accessToken);
+                    await retryClient.v2.me();
+                    logToFile(`[OAUTH2] Recovery successful after refresh for @${user.username}`);
+                    return retryClient;
+                } catch (refreshErr) {
+                    const rCode = refreshErr.code || refreshErr.status || 'UNKNOWN';
+                    logToFile(`[OAUTH2] Recovery failed for @${user.username} -> ${refreshErr.message} (code=${rCode})`);
+                }
+            }
+            
+            // Persister l'erreur pour diagnostic et rethrow
+            try {
+                const u = this.persistentUsers.get(userId) || user;
+                this.persistentUsers.set(userId, {
+                    ...u,
+                    lastValidationError: { code: errorCode, message: errorMessage, at: new Date() }
+                });
+                await this.saveUsersToFile();
+            } catch (_) {}
+            
+            // Relancer l'erreur originale
+            throw error;
         }
     }
 
@@ -332,13 +444,34 @@ class OAuth2Manager {
     }
 
     /**
+     * Get user by ID
+     */
+    getUserById(userId) {
+        const user = this.persistentUsers.get(userId);
+        if (user) {
+            return {
+                id: user.id,
+                username: user.username,
+                name: user.name,
+                projectId: user.projectId,
+                connectedAt: user.connectedAt,
+                authMethod: user.authMethod,
+                expiresAt: user.expiresAt,
+                accessToken: user.accessToken,
+                refreshToken: user.refreshToken
+            };
+        }
+        return null;
+    }
+
+    /**
      * Removes a user
      */
-    removeUser(userId) {
+    async removeUser(userId) {
         const user = this.persistentUsers.get(userId);
         if (user) {
             this.persistentUsers.delete(userId);
-            this.saveUsersToFile();
+            await this.saveUsersToFile();
             logToFile(`[OAUTH2] User @${user.username} removed`);
             return true;
         }
@@ -382,7 +515,7 @@ class OAuth2Manager {
 
             // Save new data
             this.persistentUsers.set(userId, updatedUser);
-            this.saveUsersToFile();
+            await this.saveUsersToFile();
 
             logToFile(`[OAUTH2] Token refreshed successfully for @${user.username} - Expires in ${Math.round(refreshResult.expiresIn / 3600)}h`);
             return updatedUser;
@@ -404,7 +537,7 @@ class OAuth2Manager {
                 };
                 
                 this.persistentUsers.set(userId, inactiveUser);
-                this.saveUsersToFile();
+                await this.saveUsersToFile();
                 logToFile(`[OAUTH2] User @${user.username} marked as inactive - reconnection required`);
             }
             
@@ -413,29 +546,37 @@ class OAuth2Manager {
     }
 
     /**
-     * Persistent user backup
+     * Persistent user backup (direct JSON)
      */
-    saveUsersToFile() {
+    async saveUsersToFile() {
         try {
-            const usersArray = Array.from(this.persistentUsers.entries()).map(([id, user]) => [id, user]);
-            fs.writeFileSync(this.dataFile, JSON.stringify(usersArray, null, 2));
+            const usersArray = Array.from(this.persistentUsers.entries());
+            await fs.promises.writeFile(this.dataFile, JSON.stringify(usersArray, null, 2), 'utf8');
+            logToFile(`[OAUTH2] ${usersArray.length} users saved to JSON file`);
         } catch (error) {
             logToFile(`[OAUTH2] User save error: ${error.message}`);
         }
     }
 
     /**
-     * Loading users from file
+     * Loading users from file (direct JSON)
      */
-    loadUsersFromFile() {
+    async loadUsersFromFile() {
         try {
-            if (fs.existsSync(this.dataFile)) {
-                const data = JSON.parse(fs.readFileSync(this.dataFile, 'utf8'));
-                this.persistentUsers = new Map(data);
-                logToFile(`[OAUTH2] ${this.persistentUsers.size} users loaded from file`);
+            // Charger directement depuis oauth2-users.json (sans chiffrement)
+            const rawData = await fs.promises.readFile(this.dataFile, 'utf8');
+            const users = JSON.parse(rawData);
+            
+            // Convertir le format array vers Map
+            if (Array.isArray(users)) {
+                this.persistentUsers = new Map(users);
+            } else {
+                this.persistentUsers = new Map(Object.entries(users));
             }
+            
+            logToFile(`[OAUTH2] ${this.persistentUsers.size} users loaded from JSON file`);
         } catch (error) {
-            logToFile(`[OAUTH2] User loading error: ${error.message}`);
+            logToFile(`[OAUTH2] Loading failed: ${error.message}`);
             this.persistentUsers = new Map();
         }
     }
@@ -465,10 +606,9 @@ class OAuth2Manager {
      */
     startTokenRefreshScheduler() {
         // Check every 5 minutes for tokens that need refresh
-        setInterval(async () => {
+        this.timers.setInterval('token_refresh', async () => {
             await this.checkAndRefreshTokens();
-        }, 5 * 60 * 1000); // 5 minutes
-        
+        }, 5 * 60 * 1000, { unref: true });
         logToFile('[OAUTH2] Proactive token refresh scheduler started (checks every 5min)');
     }
 
@@ -527,9 +667,9 @@ function getOAuth2Manager() {
         oauth2ManagerInstance = new OAuth2Manager();
         
         // Periodic cleanup of expired invitations (every hour)
-        setInterval(() => {
+        oauth2ManagerInstance.timers.setInterval('invites_cleanup', () => {
             oauth2ManagerInstance.cleanupExpiredInvitations();
-        }, 60 * 60 * 1000);
+        }, 60 * 60 * 1000, { unref: true });
     }
     return oauth2ManagerInstance;
 }

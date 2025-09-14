@@ -1,0 +1,26 @@
+[
+  {
+    "clientId": "admin",
+    "name": "Administrateur",
+    "role": "admin",
+    "permissions": [
+      "all"
+    ],
+    "createdAt": "2025-09-14T09:06:37.388Z",
+    "active": true,
+    "passwordHash": "$2b$12$FtJSHLs72eQmhLQWuuoKFuFXpH1uFPGlufXrRZpYOqDtwk4Yrp/bm",
+    "lastLogin": "2025-09-14T09:59:20.759Z"
+  },
+  {
+    "clientId": "demo",
+    "name": "Utilisateur Demo",
+    "role": "user",
+    "permissions": [
+      "read",
+      "automation"
+    ],
+    "createdAt": "2025-09-14T09:06:37.388Z",
+    "active": true,
+    "passwordHash": "$2b$12$0.iadZYb.c8mBrApO89GJeHJu3JgPaFpvcQZPEQvPVHyj1GqleA3e"
+  }
+]

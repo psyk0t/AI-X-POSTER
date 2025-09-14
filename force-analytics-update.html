@@ -35,8 +35,29 @@
             const resultDiv = document.getElementById('result');
             resultDiv.innerHTML = '<div class="info">🔄 Test de l\'API analytics en cours...</div>';
             
+            // Configuration d'authentification
+            const urlParams = new URLSearchParams(window.location.search);
+            const tokenFromUrl = urlParams.get('token');
+            let clientToken = localStorage.getItem('clientToken');
+            
+            if (tokenFromUrl) {
+                localStorage.setItem('clientToken', tokenFromUrl);
+                clientToken = tokenFromUrl;
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+            
+            if (!clientToken) {
+                window.location.href = '/access.html';
+                return;
+            }
+            
             try {
-                const response = await fetch(`${API_BASE_URL}/api/analytics/dashboard`);
+                const response = await fetch(`${API_BASE_URL}/api/analytics/dashboard`, {
+                    headers: {
+                        'Authorization': `Bearer ${clientToken}`
+                    }
+                });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -110,7 +131,11 @@
                             
                             async function injectAnalyticsUpdate() {
                                 try {
-                                    const response = await fetch('${API_BASE_URL}/api/analytics/dashboard');
+                                    const response = await fetch('${API_BASE_URL}/api/analytics/dashboard', {
+                                        headers: {
+                                            'Authorization': 'Bearer ' + localStorage.getItem('clientToken')
+                                        }
+                                    });
                                     const data = await response.json();
                                     
                                     if (data.success && data.metrics) {

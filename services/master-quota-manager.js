@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { logToFile } = require('./logs');
+const { logToFile } = require('./logs-optimized');
 
 /**
  * 🎯 MASTER QUOTA MANAGER - SYSTÈME UNIFIÉ
@@ -35,8 +35,11 @@ class MasterQuotaManager {
                     this.resetDailyQuotas(data);
                 }
                 
-                // Auto-cleanup disconnected accounts
-                this.cleanupDisconnectedAccounts(data);
+                // Auto-cleanup disconnected accounts (throttled to avoid spam)
+                if (!this.lastCleanup || Date.now() - this.lastCleanup > 30000) { // Max 1 fois par 30s
+                    this.cleanupDisconnectedAccounts(data);
+                    this.lastCleanup = Date.now();
+                }
                 
                 return data;
             }
@@ -499,7 +502,21 @@ class MasterQuotaManager {
         const connectedAccounts = [];
         
         try {
-            // Check OAuth 2.0 users file
+            // Utiliser les comptes du master-quota-config.json directement
+            const connectedAccountsData = this.data.connectedAccounts || {};
+            
+            // Ajouter tous les comptes actifs du master-quota-config.json
+            Object.entries(connectedAccountsData).forEach(([userId, account]) => {
+                if (account.isActive !== false && account.username) {
+                    connectedAccounts.push({
+                        id: userId,
+                        username: account.username,
+                        authMethod: account.authMethod || 'oauth2'
+                    });
+                }
+            });
+            
+            // Check OAuth 2.0 users file (fallback)
             const oauth2UsersPath = path.join(__dirname, '..', 'oauth2-users.json');
             if (fs.existsSync(oauth2UsersPath)) {
                 const oauth2Users = JSON.parse(fs.readFileSync(oauth2UsersPath, 'utf8'));

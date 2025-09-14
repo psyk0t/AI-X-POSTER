@@ -2,6 +2,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { logToFile } = require('./logs-optimized');
 const { getCacheInstance } = require('./cache');
+const { TimerManager } = require('./timer-utils');
 
 /**
  * Service d'analytics avancé pour X-AutoRaider
@@ -18,7 +19,8 @@ class AnalyticsService {
         this.initialized = false;
         this.dataFile = path.join(__dirname, '..', 'analytics-data.json');
         this.metricsBuffer = [];
-        this.flushInterval = null;
+        this.flushInterval = null; // legacy (compat)
+        this.timers = new TimerManager('analytics');
         
         // Configuration des métriques
         this.metrics = {
@@ -407,10 +409,10 @@ class AnalyticsService {
      */
     startPeriodicFlush() {
         // Sauvegarder toutes les 5 minutes
-        this.flushInterval = setInterval(async () => {
+        this.timers.setInterval('flush', async () => {
             await this.saveData();
             this.metricsBuffer = []; // Vider le buffer
-        }, 300000); // 5 minutes
+        }, 300000, { unref: true }); // 5 minutes
     }
 
     /**
@@ -541,9 +543,10 @@ class AnalyticsService {
      * Nettoyage et fermeture
      */
     async cleanup() {
-        if (this.flushInterval) {
-            clearInterval(this.flushInterval);
-        }
+        // Nettoyage centralisé
+        if (this.timers) this.timers.clearAll();
+        // Compatibilité avec anciens usages
+        if (this.flushInterval) clearInterval(this.flushInterval);
         await this.saveData();
         logToFile('[ANALYTICS] Service d\'analytics nettoyé');
     }

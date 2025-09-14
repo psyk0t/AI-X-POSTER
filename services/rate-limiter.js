@@ -31,10 +31,10 @@ class RateLimiterService {
             
             // Limites par compte Twitter (par jour)
             twitterAccount: {
-                likes: 300,
+                likes: 170,
                 retweets: 100,
-                comments: 200,
-                total: 500,
+                comments: 80,
+                total: 350,
                 window: 86400000 // 24 heures en ms
             },
             

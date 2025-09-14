@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { TimerManager } = require('./timer-utils');
 
 class SmartScheduler {
     constructor() {
@@ -13,10 +14,11 @@ class SmartScheduler {
         this.scheduledActionsQueue = [];
         this.engagementPatterns = {};
         this.isInitialized = false;
+        this.timers = new TimerManager('smart-scheduler');
         
         // Configuration par défaut
         this.config = {
-            enableSmartScheduling: false, // Mode immédiat par défaut
+            enableSmartScheduling: true, // Mode intelligent activé
             optimizationLevel: 'medium', // low, medium, high
             maxDelayHours: 24, // Délai maximum pour une action
             minActionInterval: 5, // Minutes minimum entre actions
@@ -279,23 +281,41 @@ class SmartScheduler {
      * Boucle principale du scheduler
      */
     startSchedulerLoop() {
-        setInterval(async () => {
+        this.timers.setInterval('scheduler_loop', async () => {
             try {
                 const readyActions = this.getActionsReadyForExecution();
-                
                 if (readyActions.length > 0) {
                     console.log(`[SMART-SCHEDULER] ${readyActions.length} actions prêtes à être exécutées`);
                     
-                    // Ici, on pourrait déclencher l'exécution des actions
-                    // Pour l'instant, on log juste les actions prêtes
+                    // Exécuter chaque action prête
                     for (const action of readyActions) {
-                        console.log(`[SMART-SCHEDULER] Action prête: ${action.actionType} sur tweet ${action.tweetId}`);
+                        console.log(`[SMART-SCHEDULER] Exécution: ${action.actionType} sur tweet ${action.tweetId} par ${action.accountId}`);
+                        
+                        try {
+                            // Importer le module d'automation pour exécuter l'action
+                            const automation = require('./automation');
+                            await automation.executeScheduledAction(action);
+                            
+                            console.log(`[SMART-SCHEDULER] Action exécutée avec succès: ${action.actionType} sur ${action.tweetId}`);
+                        } catch (actionError) {
+                            console.error(`[SMART-SCHEDULER] Erreur lors de l'exécution de l'action ${action.actionType}:`, actionError);
+                        }
                     }
                 }
             } catch (error) {
                 console.error('[SMART-SCHEDULER] Erreur dans la boucle du scheduler:', error);
             }
-        }, 60000); // Vérifier toutes les minutes
+        }, 60000, { unref: true }); // Vérifier toutes les minutes
+    }
+
+    /**
+     * Nettoyage des timers
+     */
+    cleanup() {
+        if (this.timers) {
+            this.timers.clearAll();
+        }
+        console.log('[SMART-SCHEDULER] Timers cleaned up');
     }
 
     /**
@@ -337,10 +357,14 @@ class SmartScheduler {
                     Object.keys(performedActions[tweetId][accountId]).forEach(actionType => {
                         const timestamp = performedActions[tweetId][accountId][actionType];
                         if (timestamp && timestamp !== true) {
-                            allActions.push({
-                                timestamp: new Date(timestamp),
-                                actionType
-                            });
+                            const date = new Date(timestamp);
+                            // Vérifier que la date est valide avant de l'ajouter
+                            if (!isNaN(date.getTime())) {
+                                allActions.push({
+                                    timestamp: date,
+                                    actionType
+                                });
+                            }
                         }
                     });
                 });
@@ -362,6 +386,18 @@ class SmartScheduler {
             const firstAction = sortedActions[0].timestamp;
             const lastAction = sortedActions[sortedActions.length - 1].timestamp;
             const now = new Date();
+            
+            // Vérifier que les dates sont valides avant de les utiliser
+            if (!firstAction || isNaN(firstAction.getTime()) || !lastAction || isNaN(lastAction.getTime())) {
+                return {
+                    canEnable: false,
+                    reason: 'invalid_timestamps',
+                    message: 'Invalid timestamp data found',
+                    hoursCollected: 0,
+                    hoursNeeded: 12,
+                    actionsCount: allActions.length
+                };
+            }
             
             const hoursCollected = Math.max(
                 (now.getTime() - firstAction.getTime()) / (1000 * 60 * 60),

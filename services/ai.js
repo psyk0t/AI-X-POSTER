@@ -1,6 +1,73 @@
 const axios = require('axios');
-const { logToFile } = require('./logs');
+const { logToFile } = require('./logs-optimized');
 const { pushLiveLog } = require('./automation');
+
+// Limites et configuration IA (en mémoire)
+const AI_TIMEOUT_MS = parseInt(process.env.PERPLEXITY_TIMEOUT_MS || '15000', 10);
+const AI_DAILY_LIMIT = parseInt(process.env.PERPLEXITY_DAILY_LIMIT || '2000', 10); // nombre max d'appels/jour
+const AI_WINDOW_MS = parseInt(process.env.PERPLEXITY_WINDOW_MS || '60000', 10); // fenêtre glissante en ms
+const AI_WINDOW_LIMIT = parseInt(process.env.PERPLEXITY_WINDOW_LIMIT || '30', 10); // max appels par fenêtre
+const AI_MIN_INTERVAL_MS = parseInt(process.env.PERPLEXITY_MIN_INTERVAL_MS || '1200', 10); // intervalle min entre appels
+
+const aiUsageState = {
+    dayKey: new Date().toDateString(),
+    totalCalls: 0,
+    windowCalls: 0,
+    windowResetAt: Date.now() + AI_WINDOW_MS,
+    lastCallAt: 0
+};
+
+function resetIfNewDay() {
+    const today = new Date().toDateString();
+    if (aiUsageState.dayKey !== today) {
+        aiUsageState.dayKey = today;
+        aiUsageState.totalCalls = 0;
+        aiUsageState.windowCalls = 0;
+        aiUsageState.windowResetAt = Date.now() + AI_WINDOW_MS;
+        aiUsageState.lastCallAt = 0;
+        logToFile('[AI][LIMITS] Daily counters reset');
+    }
+}
+
+function refillWindowIfNeeded() {
+    const now = Date.now();
+    if (now >= aiUsageState.windowResetAt) {
+        aiUsageState.windowCalls = 0;
+        aiUsageState.windowResetAt = now + AI_WINDOW_MS;
+        logToFile('[AI][LIMITS] Window counters reset');
+    }
+}
+
+function canCallNow() {
+    resetIfNewDay();
+    refillWindowIfNeeded();
+    const now = Date.now();
+    const timeSinceLast = now - aiUsageState.lastCallAt;
+    if (aiUsageState.totalCalls >= AI_DAILY_LIMIT) {
+        return { allowed: false, reason: 'daily_limit_reached' };
+    }
+    if (aiUsageState.windowCalls >= AI_WINDOW_LIMIT) {
+        return { allowed: false, reason: 'window_limit_reached', retryInMs: aiUsageState.windowResetAt - now };
+    }
+    if (timeSinceLast < AI_MIN_INTERVAL_MS) {
+        return { allowed: false, reason: 'min_interval', retryInMs: AI_MIN_INTERVAL_MS - timeSinceLast };
+    }
+    return { allowed: true };
+}
+
+function noteCall() {
+    const now = Date.now();
+    aiUsageState.lastCallAt = now;
+    aiUsageState.totalCalls++;
+    aiUsageState.windowCalls++;
+}
+
+async function wait(ms) {
+    return new Promise(res => {
+        const id = setTimeout(res, ms);
+        if (id && typeof id.unref === 'function') id.unref();
+    });
+}
 
 /**
  * Generates unique comments for a list of tweets using the Perplexity API.
@@ -41,10 +108,37 @@ async function generateUniqueAIComments(tweets, options) {
     for (let i = 0; i < tweets.length; i++) {
         const tweet = tweets[i];
         const prompt = prompts[i];
-        pushLiveLog(`[AI] Calling Perplexity API for tweet ${tweet.id_str}`);
-        logToFile(`[AI][API_CALL] Calling Perplexity for tweet ${tweet.id_str}`);
+        const safeTweetId = (tweet && (tweet.id_str || tweet.id || (tweet.data && tweet.data.id))) || 'unknown';
+        pushLiveLog(`[AI] Calling Perplexity API for tweet ${safeTweetId}`);
+        logToFile(`[AI][API_CALL] Calling Perplexity for tweet ${safeTweetId}`);
 
         try {
+            // Respecter les limites d'usage et l'intervalle minimal
+            let gate = canCallNow();
+            if (!gate.allowed) {
+                if (gate.reason === 'daily_limit_reached') {
+                    const msg = `[AI][LIMITS] Daily limit reached (${AI_DAILY_LIMIT}). Skipping tweet ${tweet.id_str}`;
+                    logToFile(msg);
+                    pushLiveLog('[AI][LIMITS] Daily limit reached, skipping');
+                    comments.push("");
+                    continue;
+                }
+                const delay = Math.max(50, gate.retryInMs || 0);
+                logToFile(`[AI][LIMITS] Waiting ${delay}ms due to ${gate.reason}`);
+                await wait(delay);
+            }
+
+            // Vérifier à nouveau après attente
+            gate = canCallNow();
+            if (!gate.allowed) {
+                const delay = Math.max(100, gate.retryInMs || AI_MIN_INTERVAL_MS);
+                logToFile(`[AI][LIMITS] Secondary wait ${delay}ms due to ${gate.reason}`);
+                await wait(delay);
+            }
+
+            // Marquer l'appel
+            noteCall();
+
             const response = await axios.post('https://api.perplexity.ai/chat/completions', {
                 model: 'sonar',
                 messages: [
@@ -53,19 +147,23 @@ async function generateUniqueAIComments(tweets, options) {
                 ]
             }, {
                 headers: {
-                    'Authorization': `Bearer ${apiKey}`
-                }
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: AI_TIMEOUT_MS
             });
 
             const comment = response.data.choices[0].message.content.trim();
             comments.push(comment);
-            logToFile(`[AI][SUCCESS] AI response received for tweet ${tweet.id_str}: ${comment.substring(0, 50)}...`);
-            pushLiveLog(`[AI] Comment generated for tweet ${tweet.id_str}`);
+            logToFile(`[AI][SUCCESS] AI response received for tweet ${safeTweetId}: ${comment.substring(0, 50)}...`);
+            pushLiveLog(`[AI] Comment generated for tweet ${safeTweetId}`);
         } catch (error) {
-            const errorMsg = `[AI][ERROR] Generation failed for tweet ${tweet.id_str}: ${error.response ? error.response.data.error.message : error.message}`;
+            const timeout = error && (error.code === 'ECONNABORTED' || error.message?.includes('timeout'));
+            const details = error?.response?.data?.error?.message || error.message;
+            const errorMsg = `[AI][ERROR] Generation failed for tweet ${safeTweetId}${timeout ? ' (timeout)' : ''}: ${details}`;
             console.error(errorMsg);
             logToFile(errorMsg);
-            pushLiveLog(`[AI][ERROR] Generation failed for tweet ${tweet.id_str}`);
+            pushLiveLog(`[AI][ERROR] Generation failed for tweet ${safeTweetId}`);
             comments.push("");
         }
     }
@@ -103,7 +201,7 @@ Good style:
 Bad style: Anything long, generic, or missing the token's subtle reference.
 
 **IMPORTANT: Always end your reply with this exact signature on a new line:**
-"\n🤖 Message sent by Raid AI Bot - DM @psyk0t for infos (X or TG)"
+"\n🤖 Message sent by Raid AI Bot - DM @psyk0t for infos (X or TG) or visit https://webtester.click"
 
 Tweet: "{tweetText}"
 
@@ -123,3 +221,21 @@ Just write the reply with the signature. Nothing else.`;
 }
 
 module.exports = { generateUniqueAIComments };
+
+// État public des limites IA (pour monitoring)
+function getAiLimitsState() {
+    resetIfNewDay();
+    refillWindowIfNeeded();
+    return {
+        dailyLimit: AI_DAILY_LIMIT,
+        dailyUsed: aiUsageState.totalCalls,
+        windowLimit: AI_WINDOW_LIMIT,
+        windowUsed: aiUsageState.windowCalls,
+        windowResetInMs: Math.max(0, aiUsageState.windowResetAt - Date.now()),
+        lastCallAt: aiUsageState.lastCallAt,
+        minIntervalMs: AI_MIN_INTERVAL_MS,
+        timeoutMs: AI_TIMEOUT_MS
+    };
+}
+
+module.exports.getAiLimitsState = getAiLimitsState;
