@@ -14,7 +14,7 @@ sudo apt install -y nginx
 sudo cat > /etc/nginx/sites-available/psyk0t-raider << EOF
 server {
     listen 80;
-    server_name ton-domaine.com www.ton-domaine.com;
+    server_name raidforge.pro www.raidforge.pro;
 
     location / {
         proxy_pass http://localhost:3005;
