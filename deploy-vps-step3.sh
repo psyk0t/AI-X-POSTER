@@ -29,7 +29,7 @@ echo "⚙️ Configuration PM2..."
 cat > ecosystem.config.js << EOF
 module.exports = {
   apps: [{
-    name: 'psyk0t-raider',
+    name: 'ai-x-poster',
     script: 'server.js',
     instances: 1,
     autorestart: true,
@@ -67,7 +67,7 @@ echo "✅ Application démarrée !"
 echo ""
 echo "📊 VÉRIFICATION :"
 pm2 status
-pm2 logs psyk0t-raider --lines 10
+pm2 logs ai-x-poster --lines 10
 echo ""
 echo "🌐 TON SITE EST DISPONIBLE SUR :"
 echo "http://ton-ip-vps:3005"
